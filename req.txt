@@ -1,0 +1,4 @@
+pygame-ce>=2.5.7
+pytmx>=3.32
+pyscroll>=2.31
+pygbag>=0.9.3

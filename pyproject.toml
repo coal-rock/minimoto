@@ -5,7 +5,7 @@ description = "Default template for PDM package"
 authors = [
     {name = "MiniMoto Team", email = "N/A"},
 ]
-dependencies = []
+dependencies = ["pygame-ce>=2.5.7", "pytmx>=3.32", "pyscroll>=2.31", "pygbag>=0.9.3", "snakeviz>=2.2.2"]
 requires-python = "==3.14.*"
 readme = "README.md"
 license = {text = "MIT"}
@@ -13,3 +13,6 @@ license = {text = "MIT"}
 
 [tool.pdm]
 distribution = false
+
+[tool.pdm.scripts]
+start = "python src/main.py"
