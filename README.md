@@ -15,3 +15,10 @@ Then start the game with:
 ```
 pdm run start
 ```
+
+## Credits
+The following asset packs were used:
+- https://foozlecc.itch.io/lucifer-exterior-tileset
+- https://thelazystone.itch.io/post-apocalyptic-pixel-art-asset-pack
+- https://szadiart.itch.io/postapo-lands-set1 (DEMO)
+
