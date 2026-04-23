@@ -21,4 +21,5 @@ The following asset packs were used:
 - https://foozlecc.itch.io/lucifer-exterior-tileset
 - https://thelazystone.itch.io/post-apocalyptic-pixel-art-asset-pack
 - https://szadiart.itch.io/postapo-lands-set1 (DEMO)
-
+- https://toffeecraft.itch.io/forest-nature-pack
+- https://minzinn.itch.io/pixelvehicles
