@@ -4,11 +4,14 @@ from typing import Callable
 from button import Button
 from helper import *
 
-START_BTN_LOC = (50, 150)
+START_BTN_LOC = (40, 150)
+START_BTN_IMAGE_PATH = "../assets/buttons/start.png"
 
-SETTINGS_BTN_LOC = (75, 250)
+SETTINGS_BTN_LOC = (20, 260)
+SETTINGS_BTN_IMAGE_PATH = "../assets/buttons/settings.png"
 
-EXIT_BTN_LOC = (75, 350)
+EXIT_BTN_LOC = (85, 345)
+EXIT_BTN_IMAGE_PATH = "../assets/buttons/exit.png"
 
 class Menu:
     __screen: pg.Surface
@@ -29,27 +32,23 @@ class Menu:
                 START_BTN_LOC[1], 
                 self.__screen, 
                 start_onclick,
-                rect_mode=True,
-                rect_h=50,
-                rect_w=150)
+                image_path=START_BTN_IMAGE_PATH)
 
         self.__settings_btn = Button(
                 SETTINGS_BTN_LOC[0], 
                 SETTINGS_BTN_LOC[1], 
                 self.__screen, 
                 self.settings_btn_onclick,
-                rect_mode=True,
-                rect_h=50,
-                rect_w=100)
+                image_path=SETTINGS_BTN_IMAGE_PATH,
+                scale=0.75)
 
         self.__exit_btn = Button(
                 EXIT_BTN_LOC[0], 
                 EXIT_BTN_LOC[1], 
                 self.__screen, 
                 self.exit_btn_onclick,
-                rect_mode=True,
-                rect_h=50,
-                rect_w=100)
+                image_path=EXIT_BTN_IMAGE_PATH,
+                scale=0.75)
 
     def settings_btn_onclick(self):
         print("settings button clicked")

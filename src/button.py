@@ -17,6 +17,7 @@ class Button:
 
     __w: int
     __h: int
+    __scale: float
     __hidden: bool
 
     __surface: pg.Surface
@@ -31,7 +32,8 @@ class Button:
             image_path: str = "",
             rect_mode: bool = False,
             rect_w: int = 10,
-            rect_h: int = 10
+            rect_h: int = 10,
+            scale: float = 1.0
             ):
         self.__x = x
         self.__y = y
@@ -40,6 +42,7 @@ class Button:
         self.__rect_mode = rect_mode
         self.__onclick = onclick
         self.__screen = screen
+        self.__scale = scale
 
         if self.__rect_mode:
             self.__rect = pg.Rect(x, y, rect_w, rect_h)
@@ -50,6 +53,7 @@ class Button:
             self.__image_rect = self.__surface.get_rect()
             self.__h = self.__surface.get_height()
             self.__w = self.__surface.get_width()
+            self.__surface = pg.transform.scale_by(self.__surface, self.__scale)
 
 
         self.__hidden = False
@@ -64,9 +68,13 @@ class Button:
         return self.__surface
 
     def draw(self):
-        if not self.__hidden:
-            if self.__rect_mode:
-                pg.draw.rect(self.__screen, (255, 255, 255), self.__rect)
+        if self.__hidden:
+            return
+        if self.__rect_mode:
+            pg.draw.rect(self.__screen, (255, 255, 255), self.__rect)
+        else:
+            self.__screen.blit(self.__surface, (self.__x, self.__y))
+            
 
     def update(self, dt: float):
         pass
