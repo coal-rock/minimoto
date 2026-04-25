@@ -6,8 +6,6 @@ from pyscroll.group import PyscrollGroup
 from pyscroll.orthographic import BufferedRenderer
 from pytmx import load_pygame
 
-import random
-
 from helper import *
 from car import Car
 
@@ -51,6 +49,12 @@ class Game:
         self.car = Car(self.group, self.screen)
         self.car.position = Vector2(200, 200)
         self.group.add(self.car)
+
+        pg.mixer.music.load("assets/music/1.wav")
+        for i in range(2, 9):
+            pg.mixer.music.queue(f"assets/music/{i}.wav")
+
+        pg.mixer.music.play()
 
     def draw(self) -> None:
         self.group.center(self.car.position)
