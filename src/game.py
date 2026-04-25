@@ -11,6 +11,9 @@ import random
 from helper import *
 from car import Car
 
+DOUBLE_CLICK_TIME = 300
+HOLD_TIME = 0.15
+
 
 class Game:
     map_path = ASSETS_DIR / "tiled" / "Map.tmx"
@@ -44,8 +47,10 @@ class Game:
         self.map_layer.zoom = 1
         self.group = PyscrollGroup(map_layer=self.map_layer, default_layer=1)
         self.fps = 0
+
         self.car = Car(self.group, self.screen)
         self.car.position = Vector2(200, 200)
+        self.group.add(self.car)
 
     def draw(self) -> None:
         self.group.center(self.car.position)
@@ -76,6 +81,14 @@ class Game:
                     # TODO: remove in prod lel
                     self.map_layer.reload()
                     break
+
+        pressed = pg.key.get_pressed()
+        just_pressed = pg.key.get_just_pressed()
+        just_released = pg.key.get_just_released()
+        current_time = pg.time.get_ticks()
+        self.car.accelerating = True
+
+        # if just
 
     def update(self, dt: float) -> None:
         self.group.update(dt)
