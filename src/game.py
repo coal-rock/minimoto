@@ -98,6 +98,11 @@ class Game:
 
     def handle_input(self, dt: float) -> None:
         for event in pg.event.get():
+            pos = pg.mouse.get_pos()
+
+            if self.state == "MENU":
+                self.menu.hover_check(pos[0], pos[1])
+            
             if event.type == pg.QUIT:
                 self.running = False
                 break
@@ -113,7 +118,6 @@ class Game:
                     break
 
             elif event.type == pg.MOUSEBUTTONDOWN:
-                pos = pg.mouse.get_pos()
 
                 if self.state == "MENU":
                     self.menu.click(pos[0], pos[1])
@@ -194,6 +198,9 @@ class Game:
     def update(self, dt: float) -> None:
         self.car.accelerating = True
         self.group.update(dt)
+
+        if self.state == "MENU":
+            self.menu.update(dt)
 
         if self.state == "RUNNING":
             self.time_to_next_wave -= dt

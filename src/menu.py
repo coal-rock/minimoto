@@ -5,13 +5,16 @@ from button import Button
 from helper import *
 
 START_BTN_LOC = (40, 150)
-START_BTN_IMAGE_PATH = "../assets/buttons/start.png"
+START_BTN_IMAGE_PATH = "buttons/start.png"
+START_BTN_HOVER_IMAGE_PATH = "buttons/start_highlighted.png"
 
 SETTINGS_BTN_LOC = (20, 260)
-SETTINGS_BTN_IMAGE_PATH = "../assets/buttons/settings.png"
+SETTINGS_BTN_IMAGE_PATH = "buttons/settings.png"
+SETTINGS_BTN_HOVER_IMAGE_PATH = "buttons/settings_highlighted.png"
 
-EXIT_BTN_LOC = (85, 345)
-EXIT_BTN_IMAGE_PATH = "../assets/buttons/exit.png"
+EXIT_BTN_LOC = (85, 350)
+EXIT_BTN_IMAGE_PATH = "buttons/exit.png"
+EXIT_BTN_HOVER_IMAGE_PATH = "buttons/exit_highlighted.png"
 
 class Menu:
     __screen: pg.Surface
@@ -32,14 +35,22 @@ class Menu:
                 START_BTN_LOC[1], 
                 self.__screen, 
                 start_onclick,
-                image_path=START_BTN_IMAGE_PATH)
+                floating=True,
+                floating_offset=0,
+                debounce_rate=8,
+                image_path=START_BTN_IMAGE_PATH,
+                highlight_image_path=START_BTN_HOVER_IMAGE_PATH)
 
         self.__settings_btn = Button(
                 SETTINGS_BTN_LOC[0], 
                 SETTINGS_BTN_LOC[1], 
                 self.__screen, 
                 self.settings_btn_onclick,
+                floating=True,
+                floating_offset=2,
+                debounce_rate=9,
                 image_path=SETTINGS_BTN_IMAGE_PATH,
+                highlight_image_path=SETTINGS_BTN_HOVER_IMAGE_PATH,
                 scale=0.75)
 
         self.__exit_btn = Button(
@@ -47,11 +58,20 @@ class Menu:
                 EXIT_BTN_LOC[1], 
                 self.__screen, 
                 self.exit_btn_onclick,
+                floating=True,
+                floating_offset=-1,
+                debounce_rate=6,
                 image_path=EXIT_BTN_IMAGE_PATH,
+                highlight_image_path=EXIT_BTN_HOVER_IMAGE_PATH,
                 scale=0.75)
 
     def settings_btn_onclick(self):
         print("settings button clicked")
+
+    def hover_check(self, x: int, y: int):
+        self.__start_btn.hover_if(x, y)
+        self.__settings_btn.hover_if(x, y)
+        self.__exit_btn.hover_if(x, y)
 
     def exit_btn_onclick(self):
         exit_game()
@@ -76,7 +96,9 @@ class Menu:
             self.__exit_btn.click_if(x, y)
 
     def update(self, dt: float):
-        pass
+        self.__start_btn.update(dt)
+        self.__settings_btn.update(dt)
+        self.__exit_btn.update(dt)
 
     def draw(self):
         self.__start_btn.draw()
