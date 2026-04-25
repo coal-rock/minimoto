@@ -15,6 +15,10 @@ from car import Car
 from enemy import Enemy
 from menu import Menu
 
+from hearts import Hearts
+from gas import Gas
+from bones import Bones
+
 DOUBLE_CLICK_TIME = 300
 HOLD_TIME = 0.15
 
@@ -35,6 +39,10 @@ class Game:
     state: Literal["MENU", "RUNNING"] = "MENU"
 
     time_to_next_wave = WAVE_INTERVAL_SECS
+
+    hearts = Hearts()
+    gas = Gas()
+    bones = Bones()
 
     menu: Menu
     car: Car
