@@ -1,4 +1,4 @@
-# Mini Moto
+# Mini Moto!
 
 ## Development
 Please install the following software:
