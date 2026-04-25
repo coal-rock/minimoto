@@ -2,6 +2,7 @@ import pygame as pg
 from typing import Callable
 
 from button import Button
+from floating_logo_ui import FloatingLogoUI
 from helper import *
 
 START_BTN_LOC = (40, 150)
@@ -24,11 +25,14 @@ class Menu:
     __exit_btn: Button
 
     __hidden: bool = False
+    __logo_ui: FloatingLogoUI
 
     def __init__(self, 
                  screen: pg.Surface,
                  start_onclick: Callable):
         self.__screen = screen
+
+        self.__logo_ui = FloatingLogoUI(self.__screen)
 
         self.__start_btn = Button(
                 START_BTN_LOC[0], 
@@ -81,12 +85,14 @@ class Menu:
         self.__start_btn.hide()
         self.__settings_btn.hide()
         self.__exit_btn.hide()
+        self.__logo_ui.hide()
 
     def show(self):
         self.__hidden = False
         self.__start_btn.show()
         self.__settings_btn.show()
         self.__exit_btn.show()
+        self.__logo_ui.show()
         
 
     def click(self, x: int, y: int):
@@ -99,8 +105,10 @@ class Menu:
         self.__start_btn.update(dt)
         self.__settings_btn.update(dt)
         self.__exit_btn.update(dt)
+        self.__logo_ui.update(dt)
 
     def draw(self):
         self.__start_btn.draw()
         self.__settings_btn.draw()
         self.__exit_btn.draw()
+        self.__logo_ui.draw()
