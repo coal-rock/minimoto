@@ -1,19 +1,21 @@
 from pygame.locals import SRCALPHA
+from trail import Trail
 import pygame as pg
 from pygame.math import Vector2
 from pyscroll.group import PyscrollGroup
 
 from typing import Literal
+import math
+import random
 from functools import lru_cache
 
 from helper import *
 from spark import Spark
-from trail import Trail
 
 CAR_MAX_SPEED = 400
-CAR_DECCEL_SPEED = 450
 CAR_ACCEL_SPEED = 300
 CAR_DECCEL_SPEED = 450
+CAR_LANDING_DECCEL_SPEED = 5000
 
 CAR_INITIAL_TURN_SPEED = 600
 CAR_TURN_ACCEL = 300
@@ -25,11 +27,18 @@ CAR_SPEED_DRIFT_THRESHOLD = 200
 CAR_DRIFT_BOOST = [100, 150, 200]
 CAR_DRIFT_POST_TIME = [0.2, 0.5, 0.7]
 CAR_DRIFT_BOOST_TIME = [0.7, 1.4, 2.3]
+CAR_COLLISION_MIN_SPEED = 200
+CAR_COLLISION_LANDING_MIN_SPEED = 100
+CAR_COLLISION_LANDING_MAX_SPEED = 250
+
+CAR_JUMP_FOCE = 300
+CAR_GRAVITY = -1100
+
+OFFSET = Vector2(100, 100)
 
 
 class Car(pg.sprite.Sprite):
     angle: float
-    display_angle: float
     speed: float
     turn_speed: float
     direction: Vector2
@@ -101,6 +110,68 @@ class Car(pg.sprite.Sprite):
         self.z_velocity = 0
         self.colliding = False
 
+    def jump(self):
+        if self.z_pos >= 0:
+            self.z_velocity = CAR_JUMP_FOCE
+
+    def emit_sparks(self, world: bool = False):
+        if self.speed < CAR_SPEED_DRIFT_THRESHOLD:
+            return
+
+        if not self.is_grounded():
+            return
+
+        if self.time_spent_drifting > CAR_DRIFT_BOOST_TIME[2]:
+            COLOR = (230, 170, 255)
+        elif self.time_spent_drifting > CAR_DRIFT_BOOST_TIME[1]:
+            COLOR = (255, 230, 170)
+        elif self.time_spent_drifting > CAR_DRIFT_BOOST_TIME[0]:
+            COLOR = (255, 170, 170)
+        else:
+            return
+
+        spark_bl = self.get_rotated_pos(Vector2(136, 173))
+        spark_br = self.get_rotated_pos(Vector2(164, 173))
+
+        target_arr = self.world_sparks if world else self.sparks
+
+        offset_x = self.rect.topleft[0] if world else 0
+        offset_y = self.rect.topleft[1] if world else 0
+
+        for pos in [spark_bl, spark_br]:
+            target_arr.append(
+                Spark(
+                    [
+                        pos.x + offset_x,
+                        pos.y + offset_y,
+                    ],
+                    math.radians(random.randint(0, 360)),
+                    random.randint(1, 3),
+                    COLOR,
+                    0.80
+                    * (
+                        self.time_spent_drifting / CAR_DRIFT_BOOST_TIME[2]
+                    ),  # scale drift spark with time spent drifting
+                ),
+            )
+
+    def get_rotated_pos(self, pos: Vector2) -> Vector2:
+        body_pivot = Vector2(self.image.get_width() // 2, self.image.get_height() // 2)
+        offset_pos = pos - body_pivot
+        rotated_offset_pos = offset_pos.rotate(self.display_angle)
+        return body_pivot + rotated_offset_pos
+
+    def get_rotated_rect(
+        self,
+        rect: pg.Rect,
+        color: tuple[int, int, int, int] = (255, 0, 0, 255),
+        border_radius: int = 0,
+    ) -> tuple[pg.Rect, pg.Surface]:
+
+        angle = self.get_angle_rot_locked()
+        rect_tuple = (rect.x, rect.y, rect.w, rect.h)
+        return self._get_cached_surface(rect_tuple, color, border_radius, angle)
+
     @lru_cache(maxsize=128)
     def _get_cached_surface(
         self,
@@ -124,41 +195,114 @@ class Car(pg.sprite.Sprite):
     def get_angle_rot_locked(self) -> float:
         return ((round((self.display_angle % 360) / 7.5)) % 48) * 7.5
 
-    def get_rotated_pos(self, pos: Vector2) -> Vector2:
-        body_pivot = Vector2(self.image.get_width() // 2, self.image.get_height() // 2)
-        offset_pos = pos - body_pivot
-        rotated_offset_pos = offset_pos.rotate(self.display_angle)
-        return body_pivot + rotated_offset_pos
+    def handle_collision(self, dt: float) -> None:
+        # if we are in the air, ignore collision
+        if self.z_pos > 0:
+            return
 
-    def get_rotated_rect(
-        self,
-        rect: pg.Rect,
-        color: tuple[int, int, int, int] = (255, 0, 0, 255),
-        border_radius: int = 0,
-    ) -> tuple[pg.Rect, pg.Surface]:
+        self.position = self.old_position
+        self.rect.center = self.position
 
-        angle = self.get_angle_rot_locked()
-        rect_tuple = (rect.x, rect.y, rect.w, rect.h)
-        return self._get_cached_surface(rect_tuple, color, border_radius, angle)
+        # if we on top of something, we should hop to get off
+        if self._layer == 4:
+            self.z_velocity += 180
+
+            self.speed -= CAR_LANDING_DECCEL_SPEED * dt
+            if self.speed > CAR_COLLISION_LANDING_MAX_SPEED:
+                self.speed = CAR_COLLISION_LANDING_MAX_SPEED
+
+            if self.speed < CAR_COLLISION_LANDING_MIN_SPEED:
+                self.speed = CAR_COLLISION_LANDING_MIN_SPEED
+        else:
+            self.speed *= -0.3 * dt
+
+            if self.speed > -CAR_COLLISION_MIN_SPEED:
+                self.speed = -CAR_COLLISION_MIN_SPEED
+
+        # we don't call end_drift() here,
+        # because we don't want the user to get the drift boost
+        # maybe i should add a bail_drift() function or something (?)
+        self.turning = None
+
+    def draw_motion_lines(self):
+        for i in range(1, 16):
+            line_len = random.randint(1, 30)
+            line_pos = 140 + ((self.time * 1000) % 30)
+
+            line_start = self.get_rotated_pos(Vector2(133 + 2 * i, line_pos))
+            line_end = self.get_rotated_pos(Vector2(133 + 2 * i, line_pos + line_len))
+
+            line_start = line_start + Vector2(0, -self.z_pos)
+            line_end = line_end + Vector2(0, -self.z_pos)
+
+            pg.draw.line(
+                self.image,
+                (
+                    255,
+                    255,
+                    255,
+                    max(
+                        0,
+                        min(255, round((max(0, self.speed) / self.car_max_speed) * 80)),
+                    ),
+                ),
+                line_start,
+                line_end,
+                width=1,
+            )
+
+    def draw_sparks(self):
+        for spark in self.sparks:
+            spark.draw(self.image)
+
+        for spark in self.world_sparks:
+            spark.draw(self.image, offset=self.rect.topleft)
+
+    def draw_headlights(self):
+        beam_surf = pg.Surface(self.image.get_size(), pg.SRCALPHA)
+
+        beam_points = [
+            Vector2(142 - 5, 134),
+            Vector2(158 + 5, 134),  # near
+            Vector2(165, 80),
+            Vector2(135, 80),  # far
+        ]
+        self.rotated_beams = [self.get_rotated_pos(p) for p in beam_points]
+        beam_intensity = random.uniform(0.7, 1)
+        for i in range(10, 0, -1):
+            soft_points = [
+                self.rotated_beams[0],
+                self.rotated_beams[1],
+                self.rotated_beams[2] + Vector2(i, 0).rotate(self.angle),
+                self.rotated_beams[3] + Vector2(-i, 0).rotate(self.angle),
+            ]
+
+            alpha = 5 + (10 - i) * 2
+            pg.draw.polygon(
+                beam_surf, (255, 255, 200, round(alpha * beam_intensity)), soft_points
+            )
+
+        self.image.blit(beam_surf, (0, -self.z_pos), special_flags=pg.BLEND_RGBA_ADD)
+
+    def draw_shadow(self):
+        scale = (self.z_pos / 200) + 1
+        shadow_rect = pg.Rect(135, 135, 33, 47).scale_by(scale)
+        rect, surf = self.get_rotated_rect(shadow_rect, (0, 0, 0, 50), 8)
+        self.image.blit(surf, rect.topleft)
 
     def draw(self) -> None:
         self.image.fill((0, 0, 0, 0))
+
+        self.draw_headlights()
+        self.draw_motion_lines()
+        self.draw_shadow()
+        self.draw_sparks()
 
         # offset draw pos by jump
         draw_pos = (100, 100 - self.z_pos)
 
         # hack
         self.image.blit(self.frames[self.frame_num], draw_pos)
-
-    def update_collision(self):
-        car_collision_rect = pg.Rect(135, 136, 30, 40)
-        body, body_surface = self.get_rotated_rect(car_collision_rect)
-
-        # compute mask
-        mask_surface = pg.Surface((300, 300), SRCALPHA)
-        mask_surface.fill((0, 0, 0, 0))
-        mask_surface.blit(body_surface, body.topleft)
-        self.mask = pg.mask.from_surface(mask_surface, 100)
 
     def add_trail(self) -> None:
         if self.z_pos == 0:
@@ -171,8 +315,12 @@ class Car(pg.sprite.Sprite):
             self.group.add(Trail(l_trail))
             self.group.add(Trail(r_trail))
 
-    def is_drifting(self):
-        return self.turning == "drift_in" or self.turning == "drift_out"
+    def start_drift(self):
+        self.time_spent_drifting = 0
+        self.turning = "drift_in"
+
+        if self.post_drift_time != 0:
+            print("drift combo")
 
     def start_drift_out(self):
         self.turning = "drift_out"
@@ -182,6 +330,84 @@ class Car(pg.sprite.Sprite):
 
     def end_drift(self):
         self.turning = None
+
+        self.angle = self.display_angle
+        self.visual_offset = 0
+        self.velocity_dir = Vector2(0, -1).rotate(self.angle)
+
+        if self.speed > CAR_SPEED_DRIFT_THRESHOLD:
+            if self.time_spent_drifting > CAR_DRIFT_BOOST_TIME[2]:
+                self.speed += CAR_DRIFT_BOOST[2]
+                self.post_drift_time = CAR_DRIFT_POST_TIME[2]
+
+            elif self.time_spent_drifting > CAR_DRIFT_BOOST_TIME[1]:
+                self.speed += CAR_DRIFT_BOOST[1]
+                self.post_drift_time = CAR_DRIFT_POST_TIME[1]
+
+            elif self.time_spent_drifting > CAR_DRIFT_BOOST_TIME[0]:
+                self.speed += CAR_DRIFT_BOOST[0]
+                self.post_drift_time = CAR_DRIFT_POST_TIME[0]
+
+    def is_drifting(self):
+        return self.turning == "drift_in" or self.turning == "drift_out"
+
+    def start_left_turn(self):
+        self.turning = "left"
+
+    def end_left_turn(self):
+        self.turning = None
+
+    def update_sparks(self, dt: float):
+        for spark_list in [self.sparks, self.world_sparks]:
+            for spark in spark_list[:]:
+                spark.move(dt)
+                if not spark.alive:
+                    spark_list.remove(spark)
+
+    def update_position(self, dt: float):
+        heading_dir = Vector2(0, -1).rotate(self.angle)
+        self.velocity_dir = heading_dir
+
+        lerp_speed = 1.2 if self.is_drifting() else 6.0
+
+        self.velocity_dir = self.velocity_dir.lerp(
+            heading_dir, lerp_speed * dt
+        ).normalize()
+
+        suction_force = Vector2(0, 0)
+        if self.is_drifting():
+            inward_dir = self.velocity_dir.rotate(-90)
+            suction_force = inward_dir * self.speed * 0.2
+
+        current_velocity = (self.velocity_dir * self.speed) + suction_force
+
+        self.old_position = Vector2(self.position)
+        self.position += current_velocity * dt
+
+        self.rect.center = (round(self.position.x), round(self.position.y))
+
+        heading_dir = Vector2(0, -1).rotate(self.display_angle)
+        self.velocity_dir = heading_dir
+
+        self.old_z_pos = self.z_pos
+
+        if self.z_pos > 0 or self.z_velocity > 0:
+            self.z_velocity += CAR_GRAVITY * dt
+            self.z_pos += self.z_velocity * dt
+
+        if self.z_pos < 0:
+            self.z_pos = 0
+            self.z_velocity = 0
+
+    def update_collision(self):
+        car_collision_rect = pg.Rect(135, 136, 30, 40)
+        body, body_surface = self.get_rotated_rect(car_collision_rect)
+
+        # compute mask
+        mask_surface = pg.Surface((300, 300), SRCALPHA)
+        mask_surface.fill((0, 0, 0, 0))
+        mask_surface.blit(body_surface, body.topleft)
+        self.mask = pg.mask.from_surface(mask_surface, 100)
 
     # am i currently touching the ground
     def is_grounded(self) -> bool:
@@ -194,6 +420,9 @@ class Car(pg.sprite.Sprite):
     # am i on or over an obstacle
     def over_obstacle(self):
         return self._layer == 4 and self.colliding
+
+    def did_just_land(self):
+        return self.z_pos == 0 and self.old_z_pos != 0
 
     def update(self, dt: float) -> None:
         self.time += dt
@@ -270,6 +499,7 @@ class Car(pg.sprite.Sprite):
 
             self.time_spent_drifting = max(0, self.time_spent_drifting)
 
+            self.add_trail()
             target_offset = -90
             lerp_speed = 5.0
         else:
@@ -282,6 +512,7 @@ class Car(pg.sprite.Sprite):
         if self.post_drift_time > 0:
             self.post_drift_time -= dt
             self.post_drift_time = max(0, self.post_drift_time)
+            self.emit_sparks(True)
 
         # holy shit make this a function ffs
         self.frame_num = (round((self.display_angle % 360) / 7.5) + 36) % 48
@@ -293,4 +524,9 @@ class Car(pg.sprite.Sprite):
         elif not self.colliding:
             self.group.change_layer(self, 2)
 
+        if self.is_drifting():
+            self.emit_sparks()
+
+        self.update_sparks(dt)
         self.update_collision()
+        self.update_position(dt)
