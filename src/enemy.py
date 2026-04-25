@@ -1,3 +1,4 @@
+from typing import Literal
 import pygame as pg
 from pygame.math import Vector2
 
@@ -37,14 +38,24 @@ class Enemy(pg.sprite.Sprite):
         self.image = self.frames[self.frame_num]
 
         self.pos = Vector2(pos)
+        self.old_pos = self.pos.copy()
         self.rect = self.image.get_rect(topleft=self.pos)
 
         self.time = random.random() * 5
         self.car = car
         self.enemies = enemies
         self.radius = 16
+        self.col_side: Literal["top", "left", "right", "bottom", None] = None
+
+    def handle_collision(
+        self, col_side: Literal["top", "left", "right", "bottom"], dt: float
+    ) -> None:
+        self.position = self.old_pos.copy()
+        self.rect.center = self.position
+        self.col_side = col_side
 
     def update(self, dt: float):
+        # TODO maybe don't normalize before dealing with collision
         self.time += dt
         self.frame_num = round((self.time * 7)) % 5
         self.image = self.frames[self.frame_num]
@@ -68,5 +79,34 @@ class Enemy(pg.sprite.Sprite):
                         separation_vec += diff.normalize() * (40 / diff.length())
 
             final_velocity = velocity + (separation_vec * 50)
+
+            match self.col_side:
+                case "left":
+                    final_velocity = Vector2(
+                        max(1, final_velocity.x),
+                        final_velocity.y,
+                    )
+
+                case "right":
+                    final_velocity = Vector2(
+                        min(-1, final_velocity.x),
+                        final_velocity.y,
+                    )
+
+                case "top":
+                    final_velocity = Vector2(
+                        final_velocity.x,
+                        max(1, final_velocity.y),
+                    )
+
+                case "bottom":
+                    final_velocity = Vector2(
+                        final_velocity.x,
+                        min(-1, final_velocity.y),
+                    )
+
+            self.old_pos = self.pos.copy()
             self.pos += final_velocity * dt
             self.rect.center = self.pos
+
+        self.col_side = None

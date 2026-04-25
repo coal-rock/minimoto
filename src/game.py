@@ -46,6 +46,7 @@ class Game:
 
     menu: Menu
     car: Car
+    enemies: pg.sprite.Group[Enemy]
 
     def __init__(self, screen: pg.Surface) -> None:
         self.screen = screen
@@ -70,6 +71,7 @@ class Game:
 
         self.car = Car(self.group, self.screen)
         self.car.position = Vector2(400, 250)
+        self.enemies = pg.sprite.Group()
         self.group.add(self.car)
 
         pg.mixer.music.load("assets/music/1.wav")
@@ -201,6 +203,40 @@ class Game:
             if self.time_to_next_wave < 0:
                 self.spawn_wave()
                 self.time_to_next_wave = WAVE_INTERVAL_SECS
+
+            car_collision_detected = False
+
+            for wall in self.walls:
+                for enemy in self.enemies:
+                    if enemy.rect.colliderect(wall):
+                        enemy_dr = enemy.rect.right - wall.left
+                        enemy_dl = wall.right - enemy.rect.left
+                        enemy_db = enemy.rect.bottom - wall.top
+                        enemy_dt = wall.bottom - enemy.rect.top
+
+                        min_overlap = min(enemy_dr, enemy_dl, enemy_db, enemy_dt)
+
+                        if min_overlap == enemy_dr:
+                            enemy.handle_collision("right", dt)
+                        elif min_overlap == enemy_dl:
+                            enemy.handle_collision("left", dt)
+                        elif min_overlap == enemy_db:
+                            enemy.handle_collision("bottom", dt)
+                        elif min_overlap == enemy_dt:
+                            enemy.handle_collision("top", dt)
+
+                if self.car.rect.colliderect(wall):
+                    wall_mask = pg.mask.Mask(wall.size)
+                    wall_mask.fill()
+
+                    offset = (wall.x - self.car.rect.x, wall.y - self.car.rect.y)
+                    if self.car.mask.overlap(wall_mask, offset):
+                        car_collision_detected = True
+                        break
+
+            self.car.colliding = car_collision_detected
+            if car_collision_detected:
+                self.car.handle_collision(dt)
 
         # self.menu.update(dt)
 

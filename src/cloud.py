@@ -7,6 +7,8 @@ PUFF_COLOR = (255, 255, 255)
 
 
 class Cloud(pg.sprite.Sprite):
+    image: pg.Surface
+
     def __init__(self, pos):
         super().__init__()
         self.pos = pg.Vector2(pos) + pg.Vector2(
@@ -17,7 +19,7 @@ class Cloud(pg.sprite.Sprite):
         self.shrink_rate = random.uniform(10, 20)
         self.alpha = 255
         self.fade_rate = random.uniform(2, 10)
-        self._layer = 2
+        self._layer = 1
         self.image = pg.Surface((0, 0), pg.SRCALPHA)
         self.rect = self.image.get_rect()
         self.update_image()
