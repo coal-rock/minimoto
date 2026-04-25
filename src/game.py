@@ -1,4 +1,5 @@
 import pygame as pg
+from pygame.math import Vector2
 import pyscroll
 import pyscroll.data
 from pyscroll.group import PyscrollGroup
@@ -8,6 +9,7 @@ from pytmx import load_pygame
 import random
 
 from helper import *
+from car import Car
 
 
 class Game:
@@ -19,6 +21,8 @@ class Game:
     font: pg.font.Font
     running: bool = True
     fps: float = 0
+
+    car: Car
 
     def __init__(self, screen: pg.Surface) -> None:
         self.screen = screen
@@ -39,8 +43,14 @@ class Game:
 
         self.map_layer.zoom = 1
         self.group = PyscrollGroup(map_layer=self.map_layer, default_layer=1)
+        self.fps = 0
+        self.car = Car(self.group, self.screen)
+        self.car.position = Vector2(200, 200)
 
     def draw(self) -> None:
+        self.group.center(self.car.position)
+        # redrawing here is a gross hack but like don't question it
+        self.car.draw()
         self.group.draw(self.screen)
 
         text = self.font.render(
