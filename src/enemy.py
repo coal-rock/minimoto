@@ -7,12 +7,6 @@ import random
 from helper import *
 from car import Car
 
-ENEMY_SPEED = 70
-KNOCKBACK_STRENGTH = 300
-FRAMES = []
-for i in range(1, 10):
-    FRAMES.append(load_image(f"enemy/placeholder/{i}.png"))
-
 
 class Enemy(pg.sprite.Sprite):
     image: pg.Surface
@@ -28,16 +22,17 @@ class Enemy(pg.sprite.Sprite):
     enemies: pg.sprite.Group[Enemy]
     radius: int
     col_car_pos: tuple[int, int] | None
+    frame_offset = 0
+    raw_frames = []
+
+    knockback_strength: float
+    speed: float
+    animation_speed: float
 
     def __init__(self, pos: Vector2, car: Car, enemies: pg.sprite.Group[Enemy]):
         super().__init__()
         self._layer = 2
-        self.frames = [
-            pg.transform.scale2x(
-                frame.convert_alpha(),
-            )
-            for frame in FRAMES
-        ]
+        self.frames = [frame.convert_alpha() for frame in self.raw_frames]
         self.frame_num = 0
         self.image = self.frames[self.frame_num]
 
@@ -72,8 +67,8 @@ class Enemy(pg.sprite.Sprite):
     def update(self, dt: float):
         # TODO maybe don't normalize before dealing with collision
         self.time += dt
-        self.frame_num = round((self.time * 7)) % 5
-        self.image = self.frames[self.frame_num]
+        self.frame_num = round((self.time * 7)) % 2
+        self.image = self.frames[self.frame_num + self.frame_offset]
         self.mask = pg.mask.from_surface(self.image)
 
         target = Vector2(self.car.rect.center)
@@ -81,7 +76,7 @@ class Enemy(pg.sprite.Sprite):
 
         if current != target:
             direction = (target - current).normalize()
-            target_velocity = direction * ENEMY_SPEED
+            target_velocity = direction * self.speed
 
             nearby_enemies = pg.sprite.spritecollide(
                 self, self.enemies, False, pg.sprite.collide_circle
@@ -99,7 +94,7 @@ class Enemy(pg.sprite.Sprite):
                 diff = self.pos - car_pos_vec
 
                 if diff.length() > 0:
-                    self.velocity = diff.normalize() * KNOCKBACK_STRENGTH
+                    self.velocity = diff.normalize() * self.knockback_strength
 
                 self.col_car_pos = None
 
@@ -118,6 +113,11 @@ class Enemy(pg.sprite.Sprite):
 
                 case "bottom":
                     self.velocity.y = min(-1, self.velocity.y)
+
+            if self.velocity.y > 0:
+                self.frame_offset = 0
+            else:
+                self.frame_offset = 2
 
             self.old_pos = self.pos.copy()
             self.pos += self.velocity * dt

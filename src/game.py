@@ -14,8 +14,10 @@ from helper import *
 
 from car import Car
 from enemy import Enemy
+from small_zombie import SmallZombie
+from mid_zombie import MidZombie
+from big_zombie import BigZombie
 from bullet import Bullet, HitSpark
-from spark import Spark
 from menu import Menu
 
 from game_ui import GameUI
@@ -26,6 +28,8 @@ HOLD_TIME = 0.15
 WAVE_INTERVAL_SECS = 10
 WAVE_MIN_SIZE = 10
 WAVE_MAX_SIZE = 20
+
+WAVE_PROBS = [1, 1, 1]
 
 
 class Game:
@@ -187,16 +191,21 @@ class Game:
 
     def spawn_wave(self):
         for _ in range(WAVE_MIN_SIZE, WAVE_MAX_SIZE):
-            enemy = Enemy(
-                Vector2(
-                    self.car.rect.topleft[0] + random.randint(-200, 200),
-                    self.car.rect.topleft[1] + random.randint(-200, 200),
-                ),
-                self.car,
-                self.enemies,
-            )
-            self.group.add(enemy)
-            self.enemies.add(enemy)
+            for i in range(0, 3):
+                enemy_class = [SmallZombie, MidZombie, BigZombie][i]
+
+                if random.random() < WAVE_PROBS[i]:
+                    enemy = enemy_class(
+                        Vector2(
+                            self.car.rect.topleft[0] + random.randint(-200, 200),
+                            self.car.rect.topleft[1] + random.randint(-200, 200),
+                        ),
+                        self.car,
+                        self.enemies,
+                    )
+
+                self.group.add(enemy)
+                self.enemies.add(enemy)
         pass
 
     def update(self, dt: float) -> None:
@@ -251,7 +260,7 @@ class Game:
             if car_collision_detected:
                 self.car.handle_collision(dt)
 
-            if self.car.did_just_land():
+            if self.car.did_just_land() or self.car.post_drift_time != 0:
                 landing_mask = self.car.get_landing_mask()
                 landing_aoe_mask = self.car.get_landing_mask_aoe()
 
@@ -271,7 +280,7 @@ class Game:
 
                     if landing_mask.overlap(enemy.mask, landing_offset):
                         enemy.kill()
-                    elif landing_aoe_mask.overlap(enemy.mask, landing_aoe_offset):
+                    if landing_aoe_mask.overlap(enemy.mask, landing_aoe_offset):
                         enemy.push_back(self.car.rect.center)
 
             # shooting bullet
