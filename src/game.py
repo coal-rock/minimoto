@@ -8,12 +8,14 @@ from pytmx import load_pygame
 
 from typing import Literal
 import random
+import math
 
 from helper import *
 
 from car import Car
 from enemy import Enemy
 from bullet import Bullet
+from spark import Spark
 from menu import Menu
 
 from game_ui import GameUI
@@ -44,11 +46,13 @@ class Game:
     car: Car
     enemies: pg.sprite.Group[Enemy]
     bullets: pg.sprite.Group[Bullet]
+    sparks: list[Spark]
 
     def __init__(self, screen: pg.Surface) -> None:
         self.screen = screen
         self.surface = pg.Surface((WIDTH, HEIGHT))
         self.font = pg.font.Font()
+        self.sparks = []
 
         tmx_data = load_pygame(str(self.map_path))
 
@@ -66,9 +70,9 @@ class Game:
         self.group = PyscrollGroup(map_layer=self.map_layer, default_layer=1)
         self.fps = 0
 
-        self.car = Car(self.group, self.screen)
         self.enemies = pg.sprite.Group()
         self.bullets = pg.sprite.Group()
+        self.car = Car(self.group, self.screen, self.bullets)
         self.car.position = Vector2(415, 265)
         self.group.add(self.car)
 
@@ -88,6 +92,10 @@ class Game:
         # redrawing here is a gross hack but like don't question it
         self.car.draw()
         self.group.draw(self.screen)
+
+        offset = self.map_layer.view_rect.topleft
+        for spark in self.sparks:
+            spark.draw(self.screen, offset)
 
         text = self.font.render(
             f"{self.fps}\nHealth: {self.car.health}\nGas: {self.car.gas}\nBones: {self.car.skulls}",
@@ -123,13 +131,6 @@ class Game:
             elif event.type == pg.MOUSEBUTTONDOWN:
                 if self.state == "MENU":
                     self.menu.click(pos[0], pos[1])
-                elif self.state == "RUNNING":
-                    if event.button == 1:  # Left click
-                        # Convert screen mouse pos to world pos
-                        world_pos = self.map_layer.screen_to_world(pos)
-                        bullet = Bullet(self.car.position, Vector2(world_pos))
-                        self.bullets.add(bullet)
-                        self.group.add(bullet)
 
         # IF STATE IS MENU (MAIN MENU)
         # DO NO ALLOW USER INPUT
@@ -280,15 +281,46 @@ class Game:
                         enemy.push_back(self.car.rect.center)
 
             # shooting bullet
-            if self.car.time_since_last_shot > self.car.shot_delay:
+            if (
+                self.car.time_since_last_shot > self.car.shot_delay
+                and len(self.enemies.sprites()) != 0
+            ):
                 self.car.time_since_last_shot = 0
+
+                closest = min(
+                    self.enemies,
+                    key=lambda e: Vector2(self.car.rect.center).distance_to(
+                        e.rect.center
+                    ),
+                )
+                self.car.add_bullet(Vector2(closest.rect.center))
 
             # bullet/enemy collision
             collisions = pg.sprite.groupcollide(self.bullets, self.enemies, True, True)
             if collisions:
                 for hit_enemies in collisions.values():
                     for enemy in hit_enemies:
+                        for _ in range(20, 30):
+                            self.sparks.append(
+                                Spark(
+                                    list(enemy.rect.center)
+                                    + Vector2(
+                                        random.uniform(-5, 5), random.uniform(-5, 5)
+                                    ),
+                                    math.radians(random.randint(0, 360)),
+                                    random.randint(5, 15),
+                                    (200, 20, 20),
+                                    scale=0.1,
+                                    speed_dec=100,
+                                )
+                            )
                         enemy.kill()
+
+            # update sparks
+            for spark in self.sparks[:]:
+                spark.move(dt)
+                if not spark.alive:
+                    self.sparks.remove(spark)
 
         # self.menu.update(dt)
 

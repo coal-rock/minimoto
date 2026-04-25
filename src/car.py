@@ -63,6 +63,7 @@ class Car(pg.sprite.Sprite):
     post_drift_time: float
     car_max_speed: float
     group: PyscrollGroup
+    bullets_group: pg.sprite.Group
 
     # using strings here is prob dumb but i honestly
     # can't be fucked to use a proper enum
@@ -91,10 +92,13 @@ class Car(pg.sprite.Sprite):
     # collision rect
     body: pg.Rect
 
-    def __init__(self, group: PyscrollGroup, screen: pg.Surface) -> None:
+    def __init__(
+        self, group: PyscrollGroup, screen: pg.Surface, bullets_group: pg.sprite.Group
+    ) -> None:
         super().__init__()
         self._layer = 2
         self.car_max_speed = CAR_MAX_SPEED
+        self.bullets_group = bullets_group
 
         self.frames = []
         for i in range(0, 48):
@@ -324,11 +328,13 @@ class Car(pg.sprite.Sprite):
         self.image.blit(self.frames[self.frame_num], draw_pos)
 
     def add_bullet(self, target: Vector2) -> None:
-        bullet_start = self.get_rotated_pos(Vector2(140, 173)) + Vector2(
+        bullet_start = self.get_rotated_pos(Vector2(150, 150)) + Vector2(
             self.rect.topleft
         )
 
-        self.group.add(Bullet(bullet_start, target))
+        bullet = Bullet(bullet_start, target, self.group)
+        self.group.add(bullet)
+        self.bullets_group.add(bullet)
 
     def add_trail(self) -> None:
         if self.z_pos == 0:

@@ -8,13 +8,14 @@ sparks = []
 
 
 class Spark:
-    def __init__(self, loc, angle, speed, color, scale=1):
+    def __init__(self, loc, angle, speed, color, scale=1, speed_dec=0.3):
         self.loc = loc
         self.angle = angle
         self.speed = speed
         self.scale = scale
         self.color = color
         self.alive = True
+        self.speed_dec = 0.3
 
     def point_towards(self, angle, rate):
         rotate_direction = (
@@ -53,7 +54,7 @@ class Spark:
         self.velocity_adjust(0.975, 0.2, 8, dt)
         self.angle += 0.1
 
-        self.speed -= 0.3
+        self.speed -= self.speed_dec
 
         if self.speed <= 0:
             self.alive = False
