@@ -428,7 +428,7 @@ class Car(pg.sprite.Sprite):
 
     # am i currently touching the ground
     def is_grounded(self) -> bool:
-        return self._layer == 2 and self.z_pos == 0
+        return self._layer == 3 and self.z_pos == 0
 
     # am i currently touching a raised object
     def is_landed(self) -> bool:
@@ -445,7 +445,7 @@ class Car(pg.sprite.Sprite):
         return self.mask.scale((600, 600))
 
     def get_landing_mask_aoe(self) -> pg.mask.Mask:
-        return self.mask.scale((700, 700))
+        return self.mask.scale((1500, 1500))
 
     def update(self, dt: float) -> None:
         self.time += dt

@@ -8,6 +8,7 @@ from helper import *
 from car import Car
 
 ENEMY_SPEED = 70
+KNOCKBACK_STRENGTH = 300
 FRAMES = []
 for i in range(1, 10):
     FRAMES.append(load_image(f"enemy/placeholder/{i}.png"))
@@ -23,8 +24,10 @@ class Enemy(pg.sprite.Sprite):
     frame_num: int
     car: Car
     pos: Vector2
+    velocity: Vector2
     enemies: pg.sprite.Group[Enemy]
     radius: int
+    col_car_pos: tuple[int, int] | None
 
     def __init__(self, pos: Vector2, car: Car, enemies: pg.sprite.Group[Enemy]):
         super().__init__()
@@ -39,6 +42,7 @@ class Enemy(pg.sprite.Sprite):
         self.image = self.frames[self.frame_num]
 
         self.pos = Vector2(pos)
+        self.velocity = Vector2(0, 0)
         self.old_pos = self.pos.copy()
         self.rect = self.image.get_rect(topleft=self.pos)
 
@@ -47,17 +51,23 @@ class Enemy(pg.sprite.Sprite):
         self.enemies = enemies
         self.radius = 16
         self.col_side: Literal["top", "left", "right", "bottom", None] = None
+        self.col_car_pos = None
         self.mask = pg.mask.from_surface(self.image)
 
     def handle_collision(
         self, col_side: Literal["top", "left", "right", "bottom"], dt: float
     ) -> None:
-        self.position = self.old_pos.copy()
-        self.rect.center = self.position
+        self.pos = self.old_pos.copy()
+        self.rect.center = self.pos
         self.col_side = col_side
 
-    def push_back(self, car_x: float, car_y: float):
-        pass
+        if col_side == "left" or col_side == "right":
+            self.velocity.x = 0
+        if col_side == "top" or col_side == "bottom":
+            self.velocity.y = 0
+
+    def push_back(self, car_pos: tuple[int, int]):
+        self.col_car_pos = car_pos
 
     def update(self, dt: float):
         # TODO maybe don't normalize before dealing with collision
@@ -71,7 +81,7 @@ class Enemy(pg.sprite.Sprite):
 
         if current != target:
             direction = (target - current).normalize()
-            velocity = direction * ENEMY_SPEED
+            target_velocity = direction * ENEMY_SPEED
 
             nearby_enemies = pg.sprite.spritecollide(
                 self, self.enemies, False, pg.sprite.collide_circle
@@ -84,35 +94,33 @@ class Enemy(pg.sprite.Sprite):
                     if diff.length() > 0:
                         separation_vec += diff.normalize() * (40 / diff.length())
 
-            final_velocity = velocity + (separation_vec * 50)
+            if self.col_car_pos is not None:
+                car_pos_vec = Vector2(self.col_car_pos)
+                diff = self.pos - car_pos_vec
+
+                if diff.length() > 0:
+                    self.velocity = diff.normalize() * KNOCKBACK_STRENGTH
+
+                self.col_car_pos = None
+
+            desired_move = target_velocity + (separation_vec * 50)
+            self.velocity = self.velocity.lerp(desired_move, 10.0 * dt)
 
             match self.col_side:
                 case "left":
-                    final_velocity = Vector2(
-                        max(1, final_velocity.x),
-                        final_velocity.y,
-                    )
+                    self.velocity.x = max(1, self.velocity.x)
 
                 case "right":
-                    final_velocity = Vector2(
-                        min(-1, final_velocity.x),
-                        final_velocity.y,
-                    )
+                    self.velocity.x = min(-1, self.velocity.x)
 
                 case "top":
-                    final_velocity = Vector2(
-                        final_velocity.x,
-                        max(1, final_velocity.y),
-                    )
+                    self.velocity.y = max(1, self.velocity.y)
 
                 case "bottom":
-                    final_velocity = Vector2(
-                        final_velocity.x,
-                        min(-1, final_velocity.y),
-                    )
+                    self.velocity.y = min(-1, self.velocity.y)
 
             self.old_pos = self.pos.copy()
-            self.pos += final_velocity * dt
+            self.pos += self.velocity * dt
             self.rect.center = self.pos
 
         self.col_side = None

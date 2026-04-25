@@ -248,7 +248,7 @@ class Game:
                 landing_aoe_mask = self.car.get_landing_mask_aoe()
 
                 landing_shift = 150  # (600 - 300) / 2
-                landing_aoe_shift = 200  # (700 - 300) / 2
+                landing_aoe_shift = 600  # (1500 - 300) / 2
 
                 for enemy in self.enemies:
                     landing_offset = (
@@ -266,11 +266,6 @@ class Game:
                     elif landing_aoe_mask.overlap(enemy.mask, landing_aoe_offset):
                         enemy.push_back(self.car.rect.center)
 
-            # for enemy in pg.sprite.spritecollide(
-            #     self.car, self.enemies, False, pg.sprite.collide_mask
-            # ):
-            #     if self.car.did_just_land():
-            #         enemy.kill()
         # self.menu.update(dt)
 
     def run(self):
