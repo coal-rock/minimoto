@@ -1,15 +1,16 @@
 import pygame as pg
 from pygame.math import Vector2
 import random
+import math
 
 BULLET_COLOR = (255, 212, 110)
-BULLET_SPEED = 500
+BULLET_SPEED = 300
 
 
 class BulletTrail(pg.sprite.Sprite):
     def __init__(self, pos: Vector2, color: tuple[int, int, int]):
         super().__init__()
-        self._layer = 1
+        self._layer = 3
         self.pos = pos.copy()
         self.color = color
         self.radius = random.uniform(1.5, 3.0)
@@ -41,7 +42,7 @@ class Bullet(pg.sprite.Sprite):
 
     def __init__(self, pos: Vector2, target: Vector2, group: pg.sprite.Group):
         super().__init__()
-        self._layer = 2
+        self._layer = 3
         self.pos = pos.copy()
         self.group = group
 
@@ -80,7 +81,7 @@ class Bullet(pg.sprite.Sprite):
         self.pos += self.direction * BULLET_SPEED * dt
         self.rect.center = (round(self.pos.x), round(self.pos.y))
 
-        # Spawn trail particles
+        # trail
         if random.random() < 0.8:
             trail_pos = self.pos - self.direction * 5
             self.group.add(BulletTrail(trail_pos, BULLET_COLOR))
@@ -88,3 +89,76 @@ class Bullet(pg.sprite.Sprite):
         self.lifetime -= dt
         if self.lifetime <= 0:
             self.kill()
+
+
+class HitSpark(pg.sprite.Sprite):
+    def __init__(
+        self,
+        pos: Vector2,
+        angle: float,
+        speed: float,
+        color: tuple[int, int, int],
+        scale: float = 1.0,
+        speed_dec: float = 0.3,
+    ):
+        super().__init__()
+        self._layer = 3
+        self.pos = Vector2(pos)
+        self.angle = angle
+        self.speed = speed
+        self.scale = scale
+        self.color = color
+        self.speed_dec = speed_dec
+        self.image = pg.Surface((1, 1))
+        self.rect = self.image.get_rect(center=self.pos)
+
+    def update(self, dt: float):
+        step = dt * 60
+        self.pos += (
+            Vector2(math.cos(self.angle), math.sin(self.angle)) * self.speed * step
+        )
+
+        # friction/gravity logic from Spark class
+        movement = [
+            math.cos(self.angle) * self.speed * step,
+            math.sin(self.angle) * self.speed * step,
+        ]
+        movement[1] = min(8, movement[1] + 0.2 * step)
+        movement[0] *= 0.975
+        self.angle = math.atan2(movement[1], movement[0])
+
+        self.angle += 0.1 * step
+        self.speed -= self.speed_dec * step
+
+        if self.speed <= 0:
+            self.kill()
+            return
+
+        size = max(1, int(self.speed * self.scale * 5))
+        self.image = pg.Surface((size * 2, size * 2), pg.SRCALPHA)
+        center = size
+
+        points = [
+            (
+                center + math.cos(self.angle) * self.speed * self.scale,
+                center + math.sin(self.angle) * self.speed * self.scale,
+            ),
+            (
+                center
+                + math.cos(self.angle + math.pi / 2) * self.speed * self.scale * 0.3,
+                center
+                + math.sin(self.angle + math.pi / 2) * self.speed * self.scale * 0.3,
+            ),
+            (
+                center - math.cos(self.angle) * self.speed * self.scale * 3.5,
+                center - math.sin(self.angle) * self.speed * self.scale * 3.5,
+            ),
+            (
+                center
+                + math.cos(self.angle - math.pi / 2) * self.speed * self.scale * 0.3,
+                center
+                - math.sin(self.angle + math.pi / 2) * self.speed * self.scale * 0.3,
+            ),
+        ]
+        pg.draw.polygon(self.image, self.color, points)
+        self.rect = self.image.get_rect(center=self.pos)

@@ -14,7 +14,7 @@ from helper import *
 
 from car import Car
 from enemy import Enemy
-from bullet import Bullet
+from bullet import Bullet, HitSpark
 from spark import Spark
 from menu import Menu
 
@@ -46,13 +46,11 @@ class Game:
     car: Car
     enemies: pg.sprite.Group[Enemy]
     bullets: pg.sprite.Group[Bullet]
-    sparks: list[Spark]
 
     def __init__(self, screen: pg.Surface) -> None:
         self.screen = screen
         self.surface = pg.Surface((WIDTH, HEIGHT))
         self.font = pg.font.Font()
-        self.sparks = []
 
         tmx_data = load_pygame(str(self.map_path))
 
@@ -92,10 +90,6 @@ class Game:
         # redrawing here is a gross hack but like don't question it
         self.car.draw()
         self.group.draw(self.screen)
-
-        offset = self.map_layer.view_rect.topleft
-        for spark in self.sparks:
-            spark.draw(self.screen, offset)
 
         text = self.font.render(
             f"{self.fps}\nHealth: {self.car.health}\nGas: {self.car.gas}\nBones: {self.car.skulls}",
@@ -301,26 +295,20 @@ class Game:
                 for hit_enemies in collisions.values():
                     for enemy in hit_enemies:
                         for _ in range(20, 30):
-                            self.sparks.append(
-                                Spark(
-                                    list(enemy.rect.center)
-                                    + Vector2(
-                                        random.uniform(-5, 5), random.uniform(-5, 5)
-                                    ),
+                            spark_pos = Vector2(enemy.rect.center) + Vector2(
+                                random.uniform(-5, 5), random.uniform(-5, 5)
+                            )
+                            self.group.add(
+                                HitSpark(
+                                    spark_pos,
                                     math.radians(random.randint(0, 360)),
-                                    random.randint(5, 15),
+                                    random.randint(1, 5),
                                     (200, 20, 20),
                                     scale=0.1,
-                                    speed_dec=100,
+                                    speed_dec=0.8,
                                 )
                             )
                         enemy.kill()
-
-            # update sparks
-            for spark in self.sparks[:]:
-                spark.move(dt)
-                if not spark.alive:
-                    self.sparks.remove(spark)
 
         # self.menu.update(dt)
 
