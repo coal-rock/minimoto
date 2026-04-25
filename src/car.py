@@ -1,3 +1,5 @@
+import bullet
+from bullet import Bullet
 from pygame.locals import SRCALPHA
 import pygame as pg
 from pygame.math import Vector2
@@ -35,10 +37,22 @@ CAR_COLLISION_LANDING_MAX_SPEED = 250
 CAR_JUMP_FOCE = 300
 CAR_GRAVITY = -1100
 
+CAR_GAS_DRAIN = 2.2
+CAR_GAS_DRIFT_DRAIN = 1.2
+
+CAR_SHOT_TIME = 1
+
 OFFSET = Vector2(100, 100)
 
 
 class Car(pg.sprite.Sprite):
+    health: float = 100
+    gas: float = 100
+    skulls: int = 0
+
+    shot_delay: float = CAR_SHOT_TIME
+    time_since_last_shot: float = 0
+
     angle: float
     speed: float
     turn_speed: float
@@ -309,6 +323,13 @@ class Car(pg.sprite.Sprite):
         # hack
         self.image.blit(self.frames[self.frame_num], draw_pos)
 
+    def add_bullet(self, target: Vector2) -> None:
+        bullet_start = self.get_rotated_pos(Vector2(140, 173)) + Vector2(
+            self.rect.topleft
+        )
+
+        self.group.add(Bullet(bullet_start, target))
+
     def add_trail(self) -> None:
         if self.z_pos == 0:
             l_trail = self.get_rotated_pos(Vector2(140, 173)) + Vector2(
@@ -428,7 +449,7 @@ class Car(pg.sprite.Sprite):
 
     # am i currently touching the ground
     def is_grounded(self) -> bool:
-        return self._layer == 3 and self.z_pos == 0
+        return self._layer == 2 and self.z_pos == 0
 
     # am i currently touching a raised object
     def is_landed(self) -> bool:
@@ -446,6 +467,15 @@ class Car(pg.sprite.Sprite):
 
     def get_landing_mask_aoe(self) -> pg.mask.Mask:
         return self.mask.scale((1500, 1500))
+
+    def update_gas(self, dt: float) -> None:
+        if self.is_drifting():
+            self.gas -= CAR_GAS_DRAIN * CAR_GAS_DRIFT_DRAIN * dt
+        else:
+            self.gas -= CAR_GAS_DRAIN * dt
+
+    def update_shot(self, dt: float) -> None:
+        self.time_since_last_shot += dt
 
     def update(self, dt: float) -> None:
         self.time += dt
@@ -553,6 +583,8 @@ class Car(pg.sprite.Sprite):
         if self.did_just_land():
             self.add_cloud()
 
+        self.update_shot(dt)
+        self.update_gas(dt)
         self.update_sparks(dt)
         self.update_collision()
         self.update_position(dt)

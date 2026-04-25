@@ -13,6 +13,7 @@ from helper import *
 
 from car import Car
 from enemy import Enemy
+from bullet import Bullet
 from menu import Menu
 
 from game_ui import GameUI
@@ -42,6 +43,7 @@ class Game:
     game_ui: GameUI
     car: Car
     enemies: pg.sprite.Group[Enemy]
+    bullets: pg.sprite.Group[Bullet]
 
     def __init__(self, screen: pg.Surface) -> None:
         self.screen = screen
@@ -66,6 +68,7 @@ class Game:
 
         self.car = Car(self.group, self.screen)
         self.enemies = pg.sprite.Group()
+        self.bullets = pg.sprite.Group()
         self.car.position = Vector2(415, 265)
         self.group.add(self.car)
 
@@ -86,6 +89,14 @@ class Game:
         self.car.draw()
         self.group.draw(self.screen)
 
+        text = self.font.render(
+            f"{self.fps}\nHealth: {self.car.health}\nGas: {self.car.gas}\nBones: {self.car.skulls}",
+            True,
+            (255, 255, 255),
+        )
+
+        self.screen.blit(text, (0, 0))
+
         self.menu.draw()
 
     def handle_input(self, dt: float) -> None:
@@ -94,7 +105,7 @@ class Game:
 
             if self.state == "MENU":
                 self.menu.hover_check(pos[0], pos[1])
-            
+
             if event.type == pg.QUIT:
                 self.running = False
                 break
@@ -110,9 +121,15 @@ class Game:
                     break
 
             elif event.type == pg.MOUSEBUTTONDOWN:
-
                 if self.state == "MENU":
                     self.menu.click(pos[0], pos[1])
+                elif self.state == "RUNNING":
+                    if event.button == 1:  # Left click
+                        # Convert screen mouse pos to world pos
+                        world_pos = self.map_layer.screen_to_world(pos)
+                        bullet = Bullet(self.car.position, Vector2(world_pos))
+                        self.bullets.add(bullet)
+                        self.group.add(bullet)
 
         # IF STATE IS MENU (MAIN MENU)
         # DO NO ALLOW USER INPUT
@@ -204,6 +221,10 @@ class Game:
             car_collision_detected = False
 
             for wall in self.walls:
+                for bullet in self.bullets.sprites():
+                    if bullet.rect.colliderect(wall):
+                        bullet.kill()
+
                 for enemy in self.enemies:
                     if enemy.rect.colliderect(wall):
                         enemy_dr = enemy.rect.right - wall.left
@@ -257,6 +278,17 @@ class Game:
                         enemy.kill()
                     elif landing_aoe_mask.overlap(enemy.mask, landing_aoe_offset):
                         enemy.push_back(self.car.rect.center)
+
+            # shooting bullet
+            if self.car.time_since_last_shot > self.car.shot_delay:
+                self.car.time_since_last_shot = 0
+
+            # bullet/enemy collision
+            collisions = pg.sprite.groupcollide(self.bullets, self.enemies, True, True)
+            if collisions:
+                for hit_enemies in collisions.values():
+                    for enemy in hit_enemies:
+                        enemy.kill()
 
         # self.menu.update(dt)
 

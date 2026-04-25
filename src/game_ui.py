@@ -10,6 +10,7 @@ GAS_IMAGE_PATH: str = ""
 
 BONES_IMAGE_PATH: str = ""
 
+
 class GameUI:
     hearts = HeartsUI()
     gas = GasUI()
