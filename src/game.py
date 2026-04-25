@@ -16,9 +16,6 @@ from enemy import Enemy
 from menu import Menu
 
 from game_ui import GameUI
-from hearts import Hearts
-from gas import Gas
-from bones import Bones
 
 DOUBLE_CLICK_TIME = 300
 HOLD_TIME = 0.15

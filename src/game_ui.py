@@ -1,6 +1,5 @@
 import pygame as pg
 
-import gas
 from hearts import HeartsUI
 from gas import GasUI
 from bones import BonesUI
