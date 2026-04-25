@@ -1,5 +1,4 @@
 from pygame.locals import SRCALPHA
-from trail import Trail
 import pygame as pg
 from pygame.math import Vector2
 from pyscroll.group import PyscrollGroup
@@ -11,6 +10,8 @@ from functools import lru_cache
 
 from helper import *
 from spark import Spark
+from trail import Trail
+from cloud import Cloud
 
 CAR_MAX_SPEED = 400
 CAR_ACCEL_SPEED = 300
@@ -155,10 +156,12 @@ class Car(pg.sprite.Sprite):
                 ),
             )
 
-    def get_rotated_pos(self, pos: Vector2) -> Vector2:
+    def get_rotated_pos(self, pos: Vector2, display: bool = True) -> Vector2:
         body_pivot = Vector2(self.image.get_width() // 2, self.image.get_height() // 2)
         offset_pos = pos - body_pivot
-        rotated_offset_pos = offset_pos.rotate(self.display_angle)
+        rotated_offset_pos = offset_pos.rotate(
+            self.display_angle if display else self.angle
+        )
         return body_pivot + rotated_offset_pos
 
     def get_rotated_rect(
@@ -314,6 +317,18 @@ class Car(pg.sprite.Sprite):
             )
             self.group.add(Trail(l_trail))
             self.group.add(Trail(r_trail))
+
+    def add_cloud(self) -> None:
+        for _ in range(0, random.randint(10, 60)):
+            l_back = self.get_rotated_pos(Vector2(140, 173)) + Vector2(
+                self.rect.topleft
+            )
+            r_back = self.get_rotated_pos(Vector2(160, 173)) + Vector2(
+                self.rect.topleft
+            )
+
+            self.group.add(Cloud(l_back))
+            self.group.add(Cloud(r_back))
 
     def start_drift(self):
         self.time_spent_drifting = 0
@@ -526,6 +541,9 @@ class Car(pg.sprite.Sprite):
 
         if self.is_drifting():
             self.emit_sparks()
+
+        if self.did_just_land():
+            self.add_cloud()
 
         self.update_sparks(dt)
         self.update_collision()
