@@ -7,15 +7,20 @@ from pyscroll.orthographic import BufferedRenderer
 from pytmx import load_pygame
 
 from typing import Literal
+import random
 
 from helper import *
+
 from car import Car
+from enemy import Enemy
 from menu import Menu
 
 DOUBLE_CLICK_TIME = 300
 HOLD_TIME = 0.15
 
 WAVE_INTERVAL_SECS = 10
+WAVE_MIN_SIZE = 10
+WAVE_MAX_SIZE = 20
 
 
 class Game:
@@ -164,11 +169,31 @@ class Game:
         self.state = "MENU"
         print("GAME STATE: MENU")
 
+    def spawn_wave(self):
+        for _ in range(WAVE_MIN_SIZE, WAVE_MAX_SIZE):
+            enemy = Enemy(
+                Vector2(
+                    self.car.rect.topleft[0] + random.randint(-200, 200),
+                    self.car.rect.topleft[1] + random.randint(-200, 200),
+                ),
+                self.car,
+                self.enemies,
+            )
+            self.group.add(enemy)
+            self.enemies.add(enemy)
+        pass
+
     def update(self, dt: float) -> None:
         self.car.accelerating = True
         self.group.update(dt)
 
-        self.time_to_next_wave -= dt
+        if self.state == "RUNNING":
+            self.time_to_next_wave -= dt
+
+            if self.time_to_next_wave < 0:
+                self.spawn_wave()
+                self.time_to_next_wave = WAVE_INTERVAL_SECS
+
         # self.menu.update(dt)
 
     def run(self):
