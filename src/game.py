@@ -62,6 +62,11 @@ class Game:
                     self.running = False
                     break
 
+                if event.key == pg.K_r:
+                    # TODO: remove in prod lel
+                    self.map_layer.reload()
+                    break
+
     def update(self, dt: float) -> None:
         self.group.update(dt)
 

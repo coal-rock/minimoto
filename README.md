@@ -23,3 +23,13 @@ The following asset packs were used:
 - https://szadiart.itch.io/postapo-lands-set1 (DEMO)
 - https://toffeecraft.itch.io/forest-nature-pack
 - https://minzinn.itch.io/pixelvehicles
+
+The following open source libraries were used:
+- PygameCE
+- pytmx
+- pyscroll
+- pygbag
+
+The following scripts/demos were used:
+- DaFluffyPotato - Spark: https://www.youtube.com/watch?v=wNMRq_uoWM0
+
