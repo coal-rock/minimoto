@@ -1,4 +1,5 @@
 import pygame as pg
+from typing import Callable
 
 from button import Button
 from helper import *
@@ -16,14 +17,18 @@ class Menu:
     __settings_btn: Button
     __exit_btn: Button
 
-    def __init__(self, screen: pg.Surface):
+    __hidden: bool = False
+
+    def __init__(self, 
+                 screen: pg.Surface,
+                 start_onclick: Callable):
         self.__screen = screen
 
         self.__start_btn = Button(
                 START_BTN_LOC[0], 
                 START_BTN_LOC[1], 
                 self.__screen, 
-                self.test,
+                start_onclick,
                 rect_mode=True,
                 rect_h=50,
                 rect_w=150)
@@ -32,7 +37,7 @@ class Menu:
                 SETTINGS_BTN_LOC[0], 
                 SETTINGS_BTN_LOC[1], 
                 self.__screen, 
-                self.test,
+                self.settings_btn_onclick,
                 rect_mode=True,
                 rect_h=50,
                 rect_w=100)
@@ -46,16 +51,30 @@ class Menu:
                 rect_h=50,
                 rect_w=100)
 
-    def test(self):
-        print("TEST")
+    def settings_btn_onclick(self):
+        print("settings button clicked")
 
     def exit_btn_onclick(self):
         exit_game()
 
+    def hide(self):
+        self.__hidden = True
+        self.__start_btn.hide()
+        self.__settings_btn.hide()
+        self.__exit_btn.hide()
+
+    def show(self):
+        self.__hidden = False
+        self.__start_btn.show()
+        self.__settings_btn.show()
+        self.__exit_btn.show()
+        
+
     def click(self, x: int, y: int):
-        self.__start_btn.click_if(x, y)
-        self.__settings_btn.click_if(x, y)
-        self.__exit_btn.click_if(x, y)
+        if not self.__hidden:
+            self.__start_btn.click_if(x, y)
+            self.__settings_btn.click_if(x, y)
+            self.__exit_btn.click_if(x, y)
 
     def update(self, dt: float):
         pass

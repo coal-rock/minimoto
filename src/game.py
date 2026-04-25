@@ -8,6 +8,7 @@ from pytmx import load_pygame
 
 from helper import *
 from car import Car
+from menu import Menu
 
 DOUBLE_CLICK_TIME = 300
 HOLD_TIME = 0.15
@@ -22,6 +23,9 @@ class Game:
     font: pg.font.Font
     running: bool = True
     fps: float = 0
+    state: str = "MAIN"
+
+    menu: Menu
 
     car: Car
 
@@ -29,6 +33,7 @@ class Game:
         self.screen = screen
         self.surface = pg.Surface((WIDTH, HEIGHT))
         self.font = pg.font.Font()
+
 
         tmx_data = load_pygame(str(self.map_path))
 
@@ -56,6 +61,8 @@ class Game:
 
         pg.mixer.music.play()
 
+        self.menu = Menu(screen, self.state_set_running)
+
     def draw(self) -> None:
         self.group.center(self.car.position)
         # redrawing here is a gross hack but like don't question it
@@ -69,6 +76,7 @@ class Game:
         )
 
         self.screen.blit(text, (0, 0))
+        self.menu.draw()
 
     def handle_input(self, dt: float) -> None:
         for event in pg.event.get():
@@ -85,6 +93,17 @@ class Game:
                     # TODO: remove in prod lel
                     self.map_layer.reload()
                     break
+
+            elif event.type == pg.MOUSEBUTTONDOWN:
+                pos = pg.mouse.get_pos()
+
+                if self.state == "MAIN":
+                    self.menu.click(pos[0], pos[1])
+        
+        # IF STATE IS MAIN (MAIN MENU)
+        # DO NO ALLOW USER INPUT
+        if self.state == "MAIN":
+            return
 
         pressed = pg.key.get_pressed()
         just_pressed = pg.key.get_just_pressed()
@@ -128,10 +147,21 @@ class Game:
         else:
             self.space_held_time = 0
 
+    def state_set_running(self):
+        self.state = "RUNNING"
+        print("GAME STATE: RUNNING")
+        self.menu.hide()
+
+    def state_set_menu(self):
+        self.state = "MENU"
+        print("GAME STATE: MENU")
+
     def update(self, dt: float) -> None:
         self.car.accelerating = True
 
         self.group.update(dt)
+
+        # self.menu.update(dt)
 
     def run(self):
         clock = pg.time.Clock()

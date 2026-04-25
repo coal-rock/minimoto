@@ -64,8 +64,9 @@ class Button:
         return self.__surface
 
     def draw(self):
-        if self.__rect_mode:
-            pg.draw.rect(self.__screen, (255, 255, 255), self.__rect)
+        if not self.__hidden:
+            if self.__rect_mode:
+                pg.draw.rect(self.__screen, (255, 255, 255), self.__rect)
 
     def update(self, dt: float):
         pass
@@ -81,6 +82,13 @@ class Button:
 
     def click(self):
         self.__onclick()
+
+    def click_if(self, x: int, y: int):
+        """
+        Runs __onclick if in bounds
+        """
+        if self.in_bounds(x, y):
+            self.__onclick()
 
     def in_bounds(self, x: int, y: int) -> bool:
         return (x >= self.__x and 
