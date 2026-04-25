@@ -13,4 +13,4 @@ def load_image(filename: str) -> pg.Surface:
     return pg.image.load(str(ASSETS_DIR / filename))
 
 def exit_game():
-    pg.event.post(pg.event.Event(pg.K_ESCAPE))
+    pg.event.post(pg.event.Event(pg.QUIT))
