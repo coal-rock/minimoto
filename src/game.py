@@ -6,12 +6,16 @@ from pyscroll.group import PyscrollGroup
 from pyscroll.orthographic import BufferedRenderer
 from pytmx import load_pygame
 
+from typing import Literal
+
 from helper import *
 from car import Car
 from menu import Menu
 
 DOUBLE_CLICK_TIME = 300
 HOLD_TIME = 0.15
+
+WAVE_INTERVAL_SECS = 10
 
 
 class Game:
@@ -23,17 +27,17 @@ class Game:
     font: pg.font.Font
     running: bool = True
     fps: float = 0
-    state: str = "MAIN"
+    state: Literal["MENU", "RUNNING"] = "MENU"
+
+    time_to_next_wave = WAVE_INTERVAL_SECS
 
     menu: Menu
-
     car: Car
 
     def __init__(self, screen: pg.Surface) -> None:
         self.screen = screen
         self.surface = pg.Surface((WIDTH, HEIGHT))
         self.font = pg.font.Font()
-
 
         tmx_data = load_pygame(str(self.map_path))
 
@@ -52,7 +56,7 @@ class Game:
         self.fps = 0
 
         self.car = Car(self.group, self.screen)
-        self.car.position = Vector2(200, 200)
+        self.car.position = Vector2(400, 250)
         self.group.add(self.car)
 
         pg.mixer.music.load("assets/music/1.wav")
@@ -64,7 +68,9 @@ class Game:
         self.menu = Menu(screen, self.state_set_running)
 
     def draw(self) -> None:
-        self.group.center(self.car.position)
+        if self.state == "RUNNING":
+            self.group.center(self.car.position)
+
         # redrawing here is a gross hack but like don't question it
         self.car.draw()
         self.group.draw(self.screen)
@@ -97,12 +103,14 @@ class Game:
             elif event.type == pg.MOUSEBUTTONDOWN:
                 pos = pg.mouse.get_pos()
 
-                if self.state == "MAIN":
+                if self.state == "MENU":
                     self.menu.click(pos[0], pos[1])
-        
-        # IF STATE IS MAIN (MAIN MENU)
+
+        # IF STATE IS MENU (MAIN MENU)
         # DO NO ALLOW USER INPUT
-        if self.state == "MAIN":
+        if self.state == "MENU":
+            self.car.accelerating = True
+            self.car.turning = "drift_in"
             return
 
         pressed = pg.key.get_pressed()
@@ -158,9 +166,9 @@ class Game:
 
     def update(self, dt: float) -> None:
         self.car.accelerating = True
-
         self.group.update(dt)
 
+        self.time_to_next_wave -= dt
         # self.menu.update(dt)
 
     def run(self):
