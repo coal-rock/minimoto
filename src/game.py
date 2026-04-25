@@ -86,14 +86,6 @@ class Game:
         self.car.draw()
         self.group.draw(self.screen)
 
-        text = self.font.render(
-            f"Hello, world!",
-            True,
-            (255, 255, 255),
-        )
-
-        self.screen.blit(text, (0, 0))
-
         self.menu.draw()
 
     def handle_input(self, dt: float) -> None:
