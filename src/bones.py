@@ -1,14 +1,17 @@
-class Bones:
-    bones: int = 0
+class BonesUI:
+    __hidden: bool = True
 
     def __init__(self):
         pass
 
-    def decrement(self, amt: int = 1):
-        self.bones -= amt
+    def draw(self, amt: int):
+        pass
 
-    def increment(self, amt: int = 1):
-        self.bones += amt
+    def update(self, dt: float):
+        pass
+    
+    def hide(self):
+        self.__hidden = True
 
-    def get(self) -> int:
-        return self.bones
+    def show(self):
+        self.__hidden = False

@@ -15,6 +15,7 @@ from car import Car
 from enemy import Enemy
 from menu import Menu
 
+from game_ui import GameUI
 from hearts import Hearts
 from gas import Gas
 from bones import Bones
@@ -39,12 +40,10 @@ class Game:
     state: Literal["MENU", "RUNNING"] = "MENU"
 
     time_to_next_wave = WAVE_INTERVAL_SECS
-
-    hearts = Hearts()
-    gas = Gas()
-    bones = Bones()
+    
 
     menu: Menu
+    game_ui: GameUI
     car: Car
     enemies: pg.sprite.Group[Enemy]
 
@@ -70,8 +69,8 @@ class Game:
         self.fps = 0
 
         self.car = Car(self.group, self.screen)
-        self.car.position = Vector2(400, 250)
         self.enemies = pg.sprite.Group()
+        self.car.position = Vector2(415, 265)
         self.group.add(self.car)
 
         pg.mixer.music.load("assets/music/1.wav")
@@ -81,6 +80,7 @@ class Game:
         pg.mixer.music.play()
 
         self.menu = Menu(screen, self.state_set_running)
+        self.game_ui = GameUI(screen)
 
     def draw(self) -> None:
         if self.state == "RUNNING":
@@ -174,6 +174,7 @@ class Game:
         self.state = "RUNNING"
         print("GAME STATE: RUNNING")
         self.menu.hide()
+        self.game_ui.show()
 
     def state_set_menu(self):
         self.state = "MENU"

@@ -1,16 +1,19 @@
-INITIAL_HEARTS: int = 10
-
-class Hearts:
-    hearts: int = INITIAL_HEARTS
+class HeartsUI:
+    __hidden: bool = True
 
     def __init__(self):
         pass
 
-    def decrement(self, amt: int = 1):
-        self.hearts -= amt
+    def draw(self, amt: int):
+        pass
 
-    def increment(self, amt: int = 1):
-        self.hearts += amt
+    def update(self, dt: float):
+        pass
 
-    def get(self) -> int:
-        return self.hearts
+    def hide(self):
+        self.__hidden = True
+
+    def show(self):
+        self.__hidden = False
+
+

@@ -1,16 +1,17 @@
-INITIAL_GAS: int = 100
-
-class Gas:
-    gas: int = INITIAL_GAS
+class GasUI:
+    __hidden: bool = True
 
     def __init__(self):
         pass
 
-    def decrement(self, amt: int = 1):
-        self.gas -= amt
+    def draw(self, amt: int):
+        pass
 
-    def increment(self, amt: int = 1):
-        self.gas += amt
+    def update(self, dt: float):
+        pass
 
-    def get(self) -> int:
-        return self.gas
+    def hide(self):
+        self.__hidden = True
+
+    def show(self):
+        self.__hidden = False
