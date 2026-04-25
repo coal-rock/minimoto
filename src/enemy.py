@@ -16,6 +16,7 @@ for i in range(1, 10):
 class Enemy(pg.sprite.Sprite):
     image: pg.Surface
     rect: pg.Rect
+    mask: pg.Mask
 
     frames: list[pg.Surface]
     time: float
@@ -46,6 +47,7 @@ class Enemy(pg.sprite.Sprite):
         self.enemies = enemies
         self.radius = 16
         self.col_side: Literal["top", "left", "right", "bottom", None] = None
+        self.mask = pg.mask.from_surface(self.image)
 
     def handle_collision(
         self, col_side: Literal["top", "left", "right", "bottom"], dt: float
@@ -59,6 +61,7 @@ class Enemy(pg.sprite.Sprite):
         self.time += dt
         self.frame_num = round((self.time * 7)) % 5
         self.image = self.frames[self.frame_num]
+        self.mask = pg.mask.from_surface(self.image)
 
         target = Vector2(self.car.rect.center)
         current = Vector2(self.rect.center)

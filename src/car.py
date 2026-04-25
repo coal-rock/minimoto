@@ -67,6 +67,8 @@ class Car(pg.sprite.Sprite):
 
     image: pg.Surface
     rect: pg.Rect
+    land_mask: pg.Mask
+    land_aoe_mask: pg.Mask
     screen: pg.Surface
 
     # neither of these are offset by world pos
@@ -438,6 +440,14 @@ class Car(pg.sprite.Sprite):
 
     def did_just_land(self):
         return self.z_pos == 0 and self.old_z_pos != 0
+
+    def get_landing_mask(self) -> pg.mask.Mask:
+        # mask is 300x300 1.3x is 390x390.
+        return self.mask.scale((390, 390))
+
+    def get_landing_mask_aoe(self) -> pg.mask.Mask:
+        # mask is 300x300 1.5x is 390x390.
+        return self.mask.scale((450, 450))
 
     def update(self, dt: float) -> None:
         self.time += dt

@@ -37,7 +37,6 @@ class Game:
     state: Literal["MENU", "RUNNING"] = "MENU"
 
     time_to_next_wave = WAVE_INTERVAL_SECS
-    
 
     menu: Menu
     game_ui: GameUI
@@ -236,6 +235,23 @@ class Game:
             if car_collision_detected:
                 self.car.handle_collision(dt)
 
+            if self.car.did_just_land():
+                landing_mask = self.car.get_landing_mask()
+                shift = 45 # (390 - 300) / 2
+                for enemy in self.enemies:
+                    offset = (
+                        enemy.rect.x - (self.car.rect.x - shift),
+                        enemy.rect.y - (self.car.rect.y - shift),
+                    )
+
+                    if landing_mask.overlap(enemy.mask, offset):
+                        enemy.kill()
+
+            # for enemy in pg.sprite.spritecollide(
+            #     self.car, self.enemies, False, pg.sprite.collide_mask
+            # ):
+            #     if self.car.did_just_land():
+            #         enemy.kill()
         # self.menu.update(dt)
 
     def run(self):
