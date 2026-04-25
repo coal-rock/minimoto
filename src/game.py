@@ -66,7 +66,7 @@ class Game:
 
         self.screen.blit(text, (0, 0))
 
-    def handle_input(self) -> None:
+    def handle_input(self, dt: float) -> None:
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 self.running = False
@@ -86,11 +86,47 @@ class Game:
         just_pressed = pg.key.get_just_pressed()
         just_released = pg.key.get_just_released()
         current_time = pg.time.get_ticks()
+
+        if just_released[pg.K_SPACE]:
+            if self.car.turning == "drift_in":
+                # click
+                if self.space_held_time < HOLD_TIME:
+                    self.car.end_drift()
+                # hold
+                else:
+                    self.car.start_drift_out()
+
+            elif self.car.turning is None:
+                if self.space_held_time < HOLD_TIME:
+                    if self.car.z_pos == 0:
+                        self.car.jump()
+
+        if just_pressed[pg.K_SPACE]:
+            if self.car.turning == "drift_out":
+                self.car.start_drift_in()
+
+        # has space been pressed
+        if pressed[pg.K_SPACE]:
+            if self.car.turning is None:
+                if self.car.z_pos == 0:
+                    if self.space_held_time > HOLD_TIME:
+                        self.car.start_left_turn()
+                else:
+                    self.car.start_drift()
+
+        if just_released[pg.K_SPACE] and self.car.turning == "left":
+            self.car.end_left_turn()
+
         self.car.accelerating = True
 
-        # if just
+        if pressed[pg.K_SPACE]:
+            self.space_held_time += dt
+        else:
+            self.space_held_time = 0
 
     def update(self, dt: float) -> None:
+        self.car.accelerating = True
+
         self.group.update(dt)
 
     def run(self):
@@ -101,7 +137,7 @@ class Game:
             while self.running:
                 dt = clock.tick(60) / 1000.0
                 self.fps = clock.get_fps()
-                self.handle_input()
+                self.handle_input(dt)
                 self.update(dt)
                 self.draw()
                 pg.display.flip()
