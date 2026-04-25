@@ -93,6 +93,7 @@ class Game:
         )
 
         self.screen.blit(text, (0, 0))
+
         self.menu.draw()
 
     def handle_input(self, dt: float) -> None:
@@ -237,15 +238,26 @@ class Game:
 
             if self.car.did_just_land():
                 landing_mask = self.car.get_landing_mask()
-                shift = 45 # (390 - 300) / 2
+                landing_aoe_mask = self.car.get_landing_mask_aoe()
+
+                landing_shift = 150  # (600 - 300) / 2
+                landing_aoe_shift = 200  # (700 - 300) / 2
+
                 for enemy in self.enemies:
-                    offset = (
-                        enemy.rect.x - (self.car.rect.x - shift),
-                        enemy.rect.y - (self.car.rect.y - shift),
+                    landing_offset = (
+                        enemy.rect.x - (self.car.rect.x - landing_shift),
+                        enemy.rect.y - (self.car.rect.y - landing_shift),
                     )
 
-                    if landing_mask.overlap(enemy.mask, offset):
+                    landing_aoe_offset = (
+                        enemy.rect.x - (self.car.rect.x - landing_aoe_shift),
+                        enemy.rect.y - (self.car.rect.y - landing_aoe_shift),
+                    )
+
+                    if landing_mask.overlap(enemy.mask, landing_offset):
                         enemy.kill()
+                    elif landing_aoe_mask.overlap(enemy.mask, landing_aoe_offset):
+                        enemy.push_back(self.car.rect.center)
 
             # for enemy in pg.sprite.spritecollide(
             #     self.car, self.enemies, False, pg.sprite.collide_mask

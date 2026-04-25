@@ -56,6 +56,9 @@ class Enemy(pg.sprite.Sprite):
         self.rect.center = self.position
         self.col_side = col_side
 
+    def push_back(self, car_x: float, car_y: float):
+        pass
+
     def update(self, dt: float):
         # TODO maybe don't normalize before dealing with collision
         self.time += dt

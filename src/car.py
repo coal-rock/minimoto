@@ -442,12 +442,10 @@ class Car(pg.sprite.Sprite):
         return self.z_pos == 0 and self.old_z_pos != 0
 
     def get_landing_mask(self) -> pg.mask.Mask:
-        # mask is 300x300 1.3x is 390x390.
-        return self.mask.scale((390, 390))
+        return self.mask.scale((600, 600))
 
     def get_landing_mask_aoe(self) -> pg.mask.Mask:
-        # mask is 300x300 1.5x is 390x390.
-        return self.mask.scale((450, 450))
+        return self.mask.scale((700, 700))
 
     def update(self, dt: float) -> None:
         self.time += dt
