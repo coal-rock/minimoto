@@ -6,9 +6,11 @@ import pygame as pg
 from pygame.math import Vector2
 
 import random
+import math
 
 from helper import *
 from car import Car
+from bullet import HitSpark
 
 
 class Enemy(pg.sprite.Sprite):
@@ -34,6 +36,8 @@ class Enemy(pg.sprite.Sprite):
     knockback_strength: float
     speed: float
     animation_speed: float
+    health: int = 1
+    hit_flash_time: float = 0
 
     def __init__(
         self,
@@ -93,6 +97,31 @@ class Enemy(pg.sprite.Sprite):
     def push_back(self, car_pos: tuple[int, int]):
         self.col_car_pos = car_pos
 
+    def take_damage(self, amount: int = 1):
+        self.health -= amount
+        self.hit_flash_time = 0.1
+
+        hit_sound = load_sound("sound/hit.wav", 0.5)
+        hit_sound.play()
+
+        for _ in range(10, 20):
+            spark_pos = Vector2(self.rect.center) + Vector2(
+                random.uniform(-5, 5), random.uniform(-5, 5)
+            )
+            self.group.add(
+                HitSpark(
+                    spark_pos,
+                    math.radians(random.randint(0, 360)),
+                    random.randint(1, 5),
+                    (200, 20, 20),
+                    scale=0.1,
+                    speed_dec=0.8,
+                )
+            )
+
+        if self.health <= 0:
+            self.kill()
+
     def kill(self):
         if random.random() < self.skull_drop_rate:
             Skull(self.pos, self.car, self.group)
@@ -108,6 +137,17 @@ class Enemy(pg.sprite.Sprite):
         self.time += dt
         self.frame_num = round((self.time * 7)) % 2
         self.image = self.frames[self.frame_num + self.frame_offset]
+
+        if self.hit_flash_time > 0:
+            self.hit_flash_time -= dt
+            # Create a white silhouette
+            flash_surf = pg.Surface(self.image.get_size(), pg.SRCALPHA)
+            mask = pg.mask.from_surface(self.image)
+            mask_surf = mask.to_surface(
+                setcolor=(255, 255, 255, 255), unsetcolor=(0, 0, 0, 0)
+            )
+            self.image = mask_surf
+
         self.mask = pg.mask.from_surface(self.image)
 
         target = Vector2(self.car.rect.center)

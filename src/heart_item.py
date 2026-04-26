@@ -4,7 +4,7 @@ from floor_item import Item
 
 class Heart(Item):
     image = load_image("heart/floor.png")
-
+    glow_color = (255, 50, 50)
     item_lerp_speed = 0.05
 
     def __init__(self, *args):

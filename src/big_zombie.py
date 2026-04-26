@@ -14,3 +14,4 @@ class BigZombie(Enemy):
     speed = 70
     knockback_strength = 200
     animation_speed = 7
+    health = 3

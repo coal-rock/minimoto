@@ -196,7 +196,7 @@ class Game:
             self.screen.blit(sub_text, sub_rect)
 
             sub_text = self.font.render("PRESS R TO RESTART", True, (255, 255, 255))
-            sub_rect = sub_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 25))
+            sub_rect = sub_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 35))
             self.screen.blit(sub_text, sub_rect)
 
     def handle_input(self, dt: float) -> None:
@@ -316,6 +316,8 @@ class Game:
         self.menu.show()
 
     def restart(self):
+        pg.mixer.stop() # Stop all ongoing sounds (drift loops, etc)
+
         self.enemies.empty()
         self.bullets.empty()
         self.gas_cans.empty()
@@ -324,16 +326,22 @@ class Game:
         self.car = Car(self.group, self.screen, self.bullets, self)
         self.car.position = Vector2(101 * 16, 68.7 * 16)
         self.group.add(self.car)
-        self.group.center(self.car.position + Vector2(-140, -40))
+
+        # Reset camera
+        self.group.center(self.car.position)
 
         self.gas_arrow = GasArrow(self.car, self.group, self.gas_cans)
 
         self.skulls_to_upgrade = [1, 5, 10, 20, 30, 40, 50]
         self.death_timer = 0
         self.time_to_next_wave = WAVE_INTERVAL_SECS
-        self.state = "MENU"
         self.bullets_to_shoot = 0
 
+        # Reset music volume
+        self.volume = 0.3
+        pg.mixer.music.set_volume(self.volume)
+
+        self.state_set_menu()
         self.spawn_gas()
         print("GAME RESTARTED")
 
@@ -393,11 +401,15 @@ class Game:
 
         # Max attempts to prevent infinite loop
         attempts = 0
-        while not valid_pos and attempts < 100:
+        while not valid_pos and attempts < 200:
             attempts += 1
             x = random.randint(min_x, max_x)
             y = random.randint(min_y, max_y)
             pos = Vector2(x, y)
+
+            # Check if too close to player
+            if pos.distance_to(self.car.position) < 500:
+                continue
 
             # check collisions (with a buffer)
             test_rect = pg.Rect(0, 0, 32, 32)
@@ -410,7 +422,6 @@ class Game:
                     break
 
         GasCan(pos, self.car, self.group, self.gas_cans)
-
     def update(self, dt: float) -> None:
         self.car.accelerating = True
 
@@ -528,12 +539,16 @@ class Game:
                 )
 
                 if landing_mask.overlap(enemy.mask, landing_offset):
+                    if self.car.is_drifting():
+                        enemy.push_back(self.car.rect.center)
+
                     if (
                         self.car.did_just_land()
                         or self.car.post_drift_time != 0
                         or self.car.invuln_time != 0
                     ):
-                        enemy.kill()
+                        enemy.take_damage(1)
+
                 if landing_aoe_mask.overlap(enemy.mask, landing_aoe_offset):
                     if (
                         self.car.did_just_land()
@@ -596,25 +611,11 @@ class Game:
                     pass
 
             # bullet/enemy collision
-            collisions = pg.sprite.groupcollide(self.bullets, self.enemies, True, True)
+            collisions = pg.sprite.groupcollide(self.bullets, self.enemies, True, False)
             if collisions:
-                for hit_enemies in collisions.values():
+                for bullet, hit_enemies in collisions.items():
                     for enemy in hit_enemies:
-                        for _ in range(20, 30):
-                            spark_pos = Vector2(enemy.rect.center) + Vector2(
-                                random.uniform(-5, 5), random.uniform(-5, 5)
-                            )
-                            self.group.add(
-                                HitSpark(
-                                    spark_pos,
-                                    math.radians(random.randint(0, 360)),
-                                    random.randint(1, 5),
-                                    (200, 20, 20),
-                                    scale=0.1,
-                                    speed_dec=0.8,
-                                )
-                            )
-                        enemy.kill()
+                        enemy.take_damage(1)
 
         # self.menu.update(dt)
         # maybe remove?
