@@ -74,7 +74,7 @@ class Menu:
         self.mask = load_image("menu_mask.png").convert_alpha()
 
     def settings_btn_onclick(self):
-        print("settings button clicked")
+        pass
 
     def hover_check(self, x: int, y: int):
         self.__start_btn.hover_if(x, y)
