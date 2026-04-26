@@ -195,13 +195,39 @@ class Game:
                 enemy_class = [SmallZombie, MidZombie, BigZombie][i]
 
                 if random.random() < WAVE_PROBS[i]:
+                    match random.randint(1, 4):
+                        # up
+                        case 1:
+                            y = self.car.rect.center[1] + (
+                                (self.screen.height / 2) + 50
+                            )
+                            x = self.car.rect.center[0] + random.randint(-250, 250)
+                        # down
+                        case 2:
+                            y = self.car.rect.center[1] - (
+                                (self.screen.height / 2) + 50
+                            )
+                            x = self.car.rect.center[0] + random.randint(-250, 250)
+
+                        # left
+                        case 3:
+                            x = self.car.rect.center[0] - ((self.screen.width / 2) + 50)
+                            y = self.car.rect.center[1] + random.randint(
+                                -self.screen.height, self.screen.height
+                            )
+
+                        # right
+                        case 4:
+                            x = self.car.rect.center[0] + ((self.screen.width / 2) + 50)
+                            y = self.car.rect.center[1] + random.randint(
+                                -self.screen.height, self.screen.height
+                            )
+
                     enemy = enemy_class(
-                        Vector2(
-                            self.car.rect.topleft[0] + random.randint(-200, 200),
-                            self.car.rect.topleft[1] + random.randint(-200, 200),
-                        ),
+                        Vector2(x, y),
                         self.car,
                         self.enemies,
+                        self.group,
                     )
 
                 self.group.add(enemy)

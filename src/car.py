@@ -53,6 +53,7 @@ class Car(pg.sprite.Sprite):
     shot_delay: float = CAR_SHOT_TIME
     time_since_last_shot: float = 0
 
+    magnet_radius = 300
     angle: float
     speed: float
     turn_speed: float

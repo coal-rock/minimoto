@@ -1,3 +1,5 @@
+from skull import Skull
+from pyscroll.group import PyscrollGroup
 from typing import Literal
 import pygame as pg
 from pygame.math import Vector2
@@ -9,9 +11,11 @@ from car import Car
 
 
 class Enemy(pg.sprite.Sprite):
+    drop_rate = 0.1
     image: pg.Surface
     rect: pg.Rect
     mask: pg.Mask
+    group: PyscrollGroup
 
     frames: list[pg.Surface]
     time: float
@@ -29,10 +33,32 @@ class Enemy(pg.sprite.Sprite):
     speed: float
     animation_speed: float
 
-    def __init__(self, pos: Vector2, car: Car, enemies: pg.sprite.Group[Enemy]):
+    def __init__(
+        self,
+        pos: Vector2,
+        car: Car,
+        enemies: pg.sprite.Group[Enemy],
+        group: PyscrollGroup,
+    ):
         super().__init__()
         self._layer = 2
-        self.frames = [frame.convert_alpha() for frame in self.raw_frames]
+        self.frames = []
+        self.group = group
+        for frame in self.raw_frames:
+            f = frame.convert_alpha()
+            w, h = f.get_size()
+            # add space for shadow twin
+            surf = pg.Surface((w + 8, h + 4), pg.SRCALPHA)
+            # shadow
+            shadow_color = (0, 0, 0, 80)
+            shadow_rect = pg.Rect(0, 0, w * 0.7, 6)
+            shadow_rect.centerx = (w + 8) // 2
+            shadow_rect.bottom = h + 3
+            pg.draw.ellipse(surf, shadow_color, shadow_rect)
+            # she bl on my i until i t
+            surf.blit(f, (4, 0))
+            self.frames.append(surf)
+
         self.frame_num = 0
         self.image = self.frames[self.frame_num]
 
@@ -63,6 +89,12 @@ class Enemy(pg.sprite.Sprite):
 
     def push_back(self, car_pos: tuple[int, int]):
         self.col_car_pos = car_pos
+
+    def kill(self):
+        if random.random() < self.drop_rate:
+            Skull(self.pos, self.car, self.group)
+
+        super().kill()
 
     def update(self, dt: float):
         # TODO maybe don't normalize before dealing with collision
