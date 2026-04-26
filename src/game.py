@@ -1,3 +1,4 @@
+from upgrade_cards import UpgradeCard
 from turtle import pos
 
 import pygame as pg
@@ -24,7 +25,6 @@ from menu import Menu
 from gas_can import GasCan
 
 from game_ui import GameUI
-from upgrade_ui import UpgradeUI
 
 DOUBLE_CLICK_TIME = 300
 HOLD_TIME = 0.15
@@ -49,7 +49,7 @@ class Game:
     font: pg.font.Font
     running: bool = True
     fps: float = 0
-    state: Literal["MENU", "RUNNING"] = "MENU"
+    state: Literal["MENU", "RUNNING", "UPGRADE"] = "MENU"
 
     shake_duration: float = 0
     shake_intensity: float = 0
@@ -59,6 +59,10 @@ class Game:
     menu: Menu
     game_ui: GameUI
     car: Car
+
+    upgrade_left: UpgradeCard
+    upgrade_right: UpgradeCard
+
     enemies: pg.sprite.Group[Enemy]
     bullets: pg.sprite.Group[Bullet]
 
@@ -68,6 +72,9 @@ class Game:
         self.screen = screen
         self.surface = pg.Surface((WIDTH, HEIGHT))
         self.font = pg.font.Font(get_dir("fonts/BoldPixels.ttf"))
+
+        self.upgrade_left = UpgradeCard("selected", "left")
+        self.upgrade_right = UpgradeCard("unselected", "right")
 
         tmx_data = load_pygame(str(self.map_path))
 
@@ -109,8 +116,7 @@ class Game:
 
         self.menu = Menu(screen, self.state_set_running)
         self.game_ui = GameUI(screen)
-        self.upgrade_ui = UpgradeUI(screen, throwaway, throwaway, throwaway, throwaway)
-
+        self.state = "UPGRADE"
         self.spawn_gas()
 
     def draw(self) -> None:
@@ -143,11 +149,16 @@ class Game:
 
         # self.screen.blit(text, (0, 0))
 
-        self.menu.draw()
+        if self.state == "MENU":
+            self.menu.draw()
+
         self.game_ui.draw(
             self.car.health, self.car.max_health, self.car.gas, self.car.skulls
         )
-        self.upgrade_ui.draw()
+
+        if self.state == "UPGRADE":
+            self.upgrade_left.draw(self.screen)
+            self.upgrade_right.draw(self.screen)
 
     def handle_input(self, dt: float) -> None:
         for event in pg.event.get():
@@ -176,7 +187,7 @@ class Game:
 
         # IF STATE IS MENU (MAIN MENU)
         # DO NO ALLOW USER INPUT
-        if self.state == "MENU":
+        if self.state != "RUNNING":
             self.car.accelerating = True
             self.car.turning = "drift_in"
             return
@@ -456,7 +467,6 @@ class Game:
         if self.car.health == 0:
             self.car.turning = "left"
         self.game_ui.update(dt, self.car.health, self.car.gas, self.car.skulls)
-        self.upgrade_ui.update(dt)
 
     def run(self):
         clock = pg.time.Clock()
