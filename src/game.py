@@ -1,4 +1,4 @@
-from upgrade_cards import UpgradeCard
+from upgrade_cards import UICard
 from turtle import pos
 
 import pygame as pg
@@ -36,10 +36,6 @@ WAVE_MAX_SIZE = 20
 WAVE_PROBS = [1, 1, 1]
 
 
-def throwaway():
-    print("TEST")
-
-
 class Game:
     map_path = ASSETS_DIR / "tiled" / "Map.tmx"
     map_layer: BufferedRenderer
@@ -49,7 +45,7 @@ class Game:
     font: pg.font.Font
     running: bool = True
     fps: float = 0
-    state: Literal["MENU", "RUNNING", "UPGRADE"] = "MENU"
+    state: Literal["MENU", "RUNNING", "UPGRADE"]
 
     shake_duration: float = 0
     shake_intensity: float = 0
@@ -60,8 +56,8 @@ class Game:
     game_ui: GameUI
     car: Car
 
-    upgrade_left: UpgradeCard
-    upgrade_right: UpgradeCard
+    upgrade_left: UICard
+    upgrade_right: UICard
 
     enemies: pg.sprite.Group[Enemy]
     bullets: pg.sprite.Group[Bullet]
@@ -73,8 +69,8 @@ class Game:
         self.surface = pg.Surface((WIDTH, HEIGHT))
         self.font = pg.font.Font(get_dir("fonts/BoldPixels.ttf"))
 
-        self.upgrade_left = UpgradeCard("selected", "left")
-        self.upgrade_right = UpgradeCard("unselected", "right")
+        self.upgrade_left = UICard("selected", "left")
+        self.upgrade_right = UICard("unselected", "right")
 
         tmx_data = load_pygame(str(self.map_path))
 
@@ -117,6 +113,21 @@ class Game:
         self.menu = Menu(screen, self.state_set_running)
         self.game_ui = GameUI(screen)
         self.state = "UPGRADE"
+
+        upgrade_types = [
+            "jump",
+            "fire_rate",
+            "health",
+            "knockback",
+            "projectiles",
+            "boost",
+            "gas",
+        ]
+        left_type, right_type = random.sample(upgrade_types, 2)
+
+        self.upgrade_left = UICard("selected", "left", left_type)
+        self.upgrade_right = UICard("unselected", "right", right_type)
+
         self.spawn_gas()
 
     def draw(self) -> None:
@@ -185,17 +196,27 @@ class Game:
                 if self.state == "MENU":
                     self.menu.click(pos[0], pos[1])
 
+        pressed = pg.key.get_pressed()
+        just_pressed = pg.key.get_just_pressed()
+        just_released = pg.key.get_just_released()
+        current_time = pg.time.get_ticks()
+
+        if self.state == "UPGRADE":
+            if just_released[pg.K_LEFT] or just_pressed[pg.K_RIGHT]:
+                if self.upgrade_left.state == "selected":
+                    self.upgrade_left.state = "unselected"
+                    self.upgrade_right.state = "selected"
+
+                elif self.upgrade_right.state == "selected":
+                    self.upgrade_left.state = "selected"
+                    self.upgrade_right.state = "unselected"
+
         # IF STATE IS MENU (MAIN MENU)
         # DO NO ALLOW USER INPUT
         if self.state != "RUNNING":
             self.car.accelerating = True
             self.car.turning = "drift_in"
             return
-
-        pressed = pg.key.get_pressed()
-        just_pressed = pg.key.get_just_pressed()
-        just_released = pg.key.get_just_released()
-        current_time = pg.time.get_ticks()
 
         if just_released[pg.K_SPACE]:
             if self.car.turning == "drift_in":
@@ -310,6 +331,10 @@ class Game:
 
         if self.state == "MENU":
             self.menu.update(dt)
+
+        if self.state == "UPGRADE":
+            self.upgrade_left.update(dt)
+            self.upgrade_right.update(dt)
 
         if self.state == "RUNNING":
             new_vol = pg.math.lerp(self.volume, 0.1, 0.01)

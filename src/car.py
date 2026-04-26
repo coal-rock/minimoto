@@ -414,12 +414,12 @@ class Car(pg.sprite.Sprite):
                 width=1,
             )
 
-    def draw_sparks(self):
+    def draw_sparks(self, offset: Vector2 = Vector2(0, 0)):
         for spark in self.sparks:
-            spark.draw(self.image)
+            spark.draw(self.image, offset=-offset)
 
         for spark in self.world_sparks:
-            spark.draw(self.image, offset=self.rect.topleft)
+            spark.draw(self.image, offset=self.rect.topleft - offset)
 
     def draw_headlights(self):
         beam_surf = pg.Surface(self.image.get_size(), pg.SRCALPHA)
@@ -453,8 +453,9 @@ class Car(pg.sprite.Sprite):
         rect, surf = self.get_rotated_rect(shadow_rect, (0, 0, 0, 50), 8)
         self.image.blit(surf, rect.topleft)
 
-    def draw(self) -> None:
-        self.image.fill((0, 0, 0, 0))
+    def draw(self, clear: bool = True, offset: Vector2 = Vector2(0, 0)) -> None:
+        if clear:
+            self.image.fill((0, 0, 0, 0))
 
         if self.invuln_time > 0:
             if round(self.time * 20) % 2 == 0:
@@ -463,7 +464,7 @@ class Car(pg.sprite.Sprite):
         self.draw_headlights()
         self.draw_motion_lines()
         self.draw_shadow()
-        self.draw_sparks()
+        self.draw_sparks(offset)
 
         # offset draw pos by jump
         draw_pos = (100, 100 - self.z_pos)

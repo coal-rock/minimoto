@@ -42,7 +42,7 @@ class Bullet(pg.sprite.Sprite):
 
     def __init__(self, pos: Vector2, target: Vector2, group: pg.sprite.Group):
         super().__init__()
-        self._layer = 3
+        self._layer = 10
         self.pos = pos.copy()
         self.group = group
 
