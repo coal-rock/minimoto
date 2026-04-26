@@ -59,8 +59,16 @@ class Game:
         tmx_data = load_pygame(str(self.map_path))
 
         self.walls = []
-        for obj in tmx_data.objects:
-            self.walls.append(pg.Rect(obj.x, obj.y, obj.width, obj.height))
+        self.tall_walls = []
+
+        for objgroup in tmx_data.objectgroups:
+            if objgroup.name == "Short Hitboxes":
+                for obj in objgroup:
+                    self.walls.append(pg.Rect(obj.x, obj.y, obj.width, obj.height))
+
+            if objgroup.name == "Tall Hitboxes":
+                for obj in objgroup:
+                    self.tall_walls.append(pg.Rect(obj.x, obj.y, obj.width, obj.height))
 
         self.map_layer = pyscroll.BufferedRenderer(
             data=pyscroll.data.TiledMapData(tmx_data),
@@ -96,7 +104,7 @@ class Game:
         self.group.draw(self.screen)
 
         text = self.font.render(
-            f"{self.fps}\nHealth: {self.car.health}\nGas: {self.car.gas}\nBones: {self.car.skulls}",
+            f"{self.fps}\nHealth: {self.car.health}\nGas: {self.car.gas}\nBones: {self.car.skulls}\nZPos: {self.car.z_pos}",
             True,
             (255, 255, 255),
         )
@@ -250,43 +258,47 @@ class Game:
 
             # if self.car
 
-            car_collision_detected = False
+            car_collision_detected = None
 
-            for wall in self.walls:
-                for bullet in self.bullets.sprites():
-                    if bullet.rect.colliderect(wall):
-                        bullet.kill()
+            for wall_list, wall_list_type in [
+                (self.walls, "short"),
+                (self.tall_walls, "tall"),
+            ]:
+                for wall in wall_list:
+                    for bullet in self.bullets.sprites():
+                        if bullet.rect.colliderect(wall):
+                            bullet.kill()
 
-                for enemy in self.enemies:
-                    if enemy.rect.colliderect(wall):
-                        enemy_dr = enemy.rect.right - wall.left
-                        enemy_dl = wall.right - enemy.rect.left
-                        enemy_db = enemy.rect.bottom - wall.top
-                        enemy_dt = wall.bottom - enemy.rect.top
+                    for enemy in self.enemies:
+                        if enemy.rect.colliderect(wall):
+                            enemy_dr = enemy.rect.right - wall.left
+                            enemy_dl = wall.right - enemy.rect.left
+                            enemy_db = enemy.rect.bottom - wall.top
+                            enemy_dt = wall.bottom - enemy.rect.top
 
-                        min_overlap = min(enemy_dr, enemy_dl, enemy_db, enemy_dt)
+                            min_overlap = min(enemy_dr, enemy_dl, enemy_db, enemy_dt)
 
-                        if min_overlap == enemy_dr:
-                            enemy.handle_collision("right", dt)
-                        elif min_overlap == enemy_dl:
-                            enemy.handle_collision("left", dt)
-                        elif min_overlap == enemy_db:
-                            enemy.handle_collision("bottom", dt)
-                        elif min_overlap == enemy_dt:
-                            enemy.handle_collision("top", dt)
+                            if min_overlap == enemy_dr:
+                                enemy.handle_collision("right", dt)
+                            elif min_overlap == enemy_dl:
+                                enemy.handle_collision("left", dt)
+                            elif min_overlap == enemy_db:
+                                enemy.handle_collision("bottom", dt)
+                            elif min_overlap == enemy_dt:
+                                enemy.handle_collision("top", dt)
 
-                if self.car.rect.colliderect(wall):
-                    wall_mask = pg.mask.Mask(wall.size)
-                    wall_mask.fill()
+                    if self.car.rect.colliderect(wall):
+                        wall_mask = pg.mask.Mask(wall.size)
+                        wall_mask.fill()
 
-                    offset = (wall.x - self.car.rect.x, wall.y - self.car.rect.y)
-                    if self.car.mask.overlap(wall_mask, offset):
-                        car_collision_detected = True
-                        break
+                        offset = (wall.x - self.car.rect.x, wall.y - self.car.rect.y)
+                        if self.car.mask.overlap(wall_mask, offset):
+                            car_collision_detected = wall_list_type
+                            break
 
             self.car.colliding = car_collision_detected
             if car_collision_detected:
-                self.car.handle_collision(dt)
+                self.car.handle_collision(dt, car_collision_detected)
 
             if self.car.did_just_land() or self.car.post_drift_time != 0:
                 landing_mask = self.car.get_landing_mask()

@@ -79,7 +79,7 @@ class Car(pg.sprite.Sprite):
     time: float
     z_pos: float
     last_z_pos: float
-    colliding: bool
+    colliding: Literal["tall", "short", None]
 
     image: pg.Surface
     rect: pg.Rect
@@ -130,7 +130,7 @@ class Car(pg.sprite.Sprite):
         self.z_pos = 0
         self.old_z_pos = 0
         self.z_velocity = 0
-        self.colliding = False
+        self.colliding = None
 
     def jump(self):
         if self.z_pos >= 0:
@@ -219,17 +219,22 @@ class Car(pg.sprite.Sprite):
     def get_angle_rot_locked(self) -> float:
         return ((round((self.display_angle % 360) / 7.5)) % 48) * 7.5
 
-    def handle_collision(self, dt: float) -> None:
+    def handle_collision(
+        self,
+        dt: float,
+        wall_type: Literal["short", "tall"],
+    ) -> None:
         # if we are in the air, ignore collision
-        if self.z_pos > 0:
+        if self.z_pos > 0 and wall_type == "short":
             return
 
         self.position = self.old_position
         self.rect.center = self.position
 
         # if we on top of something, we should hop to get off
-        if self._layer == 4:
-            self.z_velocity += 180
+        if self._layer == 4 and not self.colliding == "tall":
+            if wall_type == "short":
+                self.z_velocity += 180
 
             self.speed -= CAR_LANDING_DECCEL_SPEED * dt
             if self.speed > CAR_COLLISION_LANDING_MAX_SPEED:
@@ -460,11 +465,11 @@ class Car(pg.sprite.Sprite):
 
     # am i currently touching a raised object
     def is_landed(self) -> bool:
-        return self._layer == 4 and self.z_pos == 0
+        return self._layer == 4 and self.z_pos == 0 and self.colliding == "short"
 
     # am i on or over an obstacle
     def over_obstacle(self):
-        return self._layer == 4 and self.colliding
+        return self._layer == 4 and self.colliding == "short"
 
     def did_just_land(self):
         return self.z_pos == 0 and self.old_z_pos != 0
