@@ -21,7 +21,7 @@ class FloatingLogoUI:
 
     def __init__(self, viewport: pg.Surface):
         self.__vp = viewport
-        self.__logo = load_image("logo/logo.png")
+        self.__logo = load_image("logo/logo_2.png")
         self.__logo = pg.transform.scale_by(self.__logo, 0.8)
         self.__x = floor(((36 * 16) - self.__logo.width) / 2)
 

@@ -9,6 +9,12 @@ from typing import Callable
 
 from upgrade_cards import *
 
+# TODO: Fun math to center. Yay
+CARD_1_X = 10
+CARD_1_Y = 10
+CARD_2_X = 10
+CARD_2_Y = 10
+
 
 class UpgradeUI:
     """
@@ -47,6 +53,9 @@ class UpgradeUI:
         self.__boost_duration_card.click_if(x, y)
         self.__max_health_card.click_if(x, y)
 
+    def start_selection(self):
+        self.__jump_card.show()
+
 
     def draw(self):
         pass
@@ -60,7 +69,7 @@ class UpgradeUI:
 
     def show(self):
         self.__hidden = False
-        for c in self.__options: c.show()
+        # for c in self.__options: c.show()
 
     def __sample_options(self) -> list[UpgradeCard]:
         return sample(self.__options, 2)
