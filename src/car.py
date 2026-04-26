@@ -38,7 +38,7 @@ CAR_COLLISION_LANDING_MAX_SPEED = 250
 CAR_JUMP_FOCE = 300
 CAR_GRAVITY = -1100
 
-CAR_GAS_DRAIN = 2.45
+CAR_GAS_DRAIN = 2.28
 CAR_GAS_DRIFT_DRAIN = 1.2
 
 CAR_SHOT_TIME = 1
@@ -46,7 +46,7 @@ CAR_SHOT_TIME = 1
 OFFSET = Vector2(100, 100)
 
 
-class Car(pg.sprite.Sprite):
+class car.gas.Car(pg.sprite.Sprite):
     health: int = 5
     max_health: int = 5
 
