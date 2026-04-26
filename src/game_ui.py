@@ -12,7 +12,7 @@ HEARTS_Y: int = 10
 
 GAS_IMAGE_PATH: str = "gas_can/ui.png"
 GAS_X: int = 20
-GAS_Y: int = 10
+GAS_Y: int = 50
 
 BONES_IMAGE_PATH: str = "skull/ui.png"
 BONES_X: int = 20
@@ -26,7 +26,7 @@ class GameUI:
     def __init__(self, vp: pg.Surface):
         self.__vp = vp
         self.hearts = HeartsUI(vp, load_image(HEARTS_IMAGE_PATH), HEARTS_X, HEARTS_Y)
-        self.gas = GasUI(vp, load_image(GAS_IMAGE_PATH))
+        self.gas = GasUI(vp, load_image(GAS_IMAGE_PATH), GAS_X, GAS_Y)
         self.bones = BonesUI(vp, load_image(BONES_IMAGE_PATH))
 
     def draw(self, hearts_amt: float, gas_amt: float, bones_amt: int):

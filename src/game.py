@@ -418,6 +418,7 @@ class Game:
                         enemy.kill()
 
         # self.menu.update(dt)
+        self.game_ui.update(dt, self.car.health, self.car.gas, self.car.skulls)
 
     def run(self):
         clock = pg.time.Clock()
