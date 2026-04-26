@@ -130,7 +130,7 @@ class Game:
             (255, 255, 255),
         )
 
-        self.screen.blit(text, (0, 0))
+        self.screen.blit(text, (400, 0))
 
         self.menu.draw()
         self.game_ui.draw(
