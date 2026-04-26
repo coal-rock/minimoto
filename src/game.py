@@ -169,7 +169,7 @@ class Game:
             target_pos = self.car.position + lead_offset
 
             if Vector2(self.group.view.center).distance_to(target_pos) > 5:
-                target_center = Vector2(self.group.view.center).lerp(target_pos, 0.1)
+                target_center = Vector2(self.group.view.center).lerp(target_pos, max(0.0, min(1.0, 0.1)))
             else:
                 target_center = target_pos
 
@@ -369,8 +369,9 @@ class Game:
 
             if pressed[pg.K_SPACE]:
                 self.space_bar_press_tmr += dt
-                progress = min(
-                    1.0, self.space_bar_press_tmr / self.space_bar_press_tmr_target
+                progress = max(
+                    0.0,
+                    min(1.0, self.space_bar_press_tmr / self.space_bar_press_tmr_target),
                 )
 
                 if self.upgrade_left.state == "selected":
@@ -657,7 +658,7 @@ class Game:
             else:
                 self.death_timer = 0
 
-            new_vol = pg.math.lerp(self.volume, 0.1, 0.01)
+            new_vol = pg.math.lerp(self.volume, 0.1, max(0.0, min(1.0, 0.01)))
             if new_vol != self.volume:
                 self.volume = new_vol
                 pg.mixer.music.set_volume(self.volume)

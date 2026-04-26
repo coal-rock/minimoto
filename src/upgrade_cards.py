@@ -399,7 +399,7 @@ class UICard:
                         curr_len += seg_len
                     else:
                         rem = target_len - curr_len
-                        ratio = rem / seg_len
+                        ratio = max(0, min(1, rem / seg_len))
                         p_end = p1.lerp(p2, ratio)
                         pg.draw.line(
                             surface,

@@ -22,7 +22,7 @@ class FirePuff(pg.sprite.Sprite):
         self.update_image()
 
     def update_image(self):
-        progress = self.timer / self.life_time
+        progress = max(0.0, min(1.0, self.timer / self.life_time))
         color_idx = int(progress * (len(self.color_sequence) - 1))
         next_idx = min(color_idx + 1, len(self.color_sequence) - 1)
         lerp_factor = (progress * (len(self.color_sequence) - 1)) % 1

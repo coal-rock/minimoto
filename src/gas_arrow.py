@@ -65,7 +65,7 @@ class GasArrow(pg.sprite.Sprite):
             target_angle = 0
 
         angle_diff = (target_angle - self.current_angle + 180) % 360 - 180
-        self.current_angle += angle_diff * 10 * dt
+        self.current_angle += angle_diff * max(0, min(1, 10 * dt))
         self.current_angle %= 360
 
         if nearest_gas != self.last_nearest_gas:

@@ -164,7 +164,7 @@ class Item(pg.sprite.Sprite):
             return
 
         if distance < self.car.magnet_radius:
-            lerp_pos = self.pos.lerp(car_center, self.item_lerp_speed)
+            lerp_pos = self.pos.lerp(car_center, max(0, min(1, self.item_lerp_speed)))
 
             direction = car_center - self.pos
             if direction.length() > 0:

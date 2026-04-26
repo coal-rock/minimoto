@@ -617,7 +617,7 @@ class Car(pg.sprite.Sprite):
         lerp_speed = 1.2 if self.is_drifting() else 6.0
 
         self.velocity_dir = self.velocity_dir.lerp(
-            heading_dir, lerp_speed * dt
+            heading_dir, max(0, min(1, lerp_speed * dt))
         ).normalize()
 
         suction_force = Vector2(0, 0)
@@ -784,7 +784,7 @@ class Car(pg.sprite.Sprite):
             target_offset = 0.0
             lerp_speed = 7.0
 
-        self.visual_offset += (target_offset - self.visual_offset) * lerp_speed * dt
+        self.visual_offset += (target_offset - self.visual_offset) * max(0, min(1, lerp_speed * dt))
         self.display_angle = self.angle + self.visual_offset
 
         if self.post_drift_time > 0:
