@@ -1,14 +1,18 @@
+import pygame as pg
+
 class GasUI:
     __hidden: bool = True
 
-    def __init__(self):
+    def __init__(self, veiw_port: pg.Surface, surface: pg.Surface):
         pass
 
-    def draw(self, amt: int):
-        pass
+    def draw(self, amt: float):
+        if self.__hidden:
+            return
 
-    def update(self, dt: float):
-        pass
+    def update(self, dt: float, gas: float):
+        if self.__hidden:
+            return
 
     def hide(self):
         self.__hidden = True

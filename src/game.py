@@ -133,6 +133,10 @@ class Game:
         self.screen.blit(text, (0, 0))
 
         self.menu.draw()
+        self.game_ui.draw(
+                self.car.health, 
+                self.car.gas, 
+                self.car.skulls)
 
     def handle_input(self, dt: float) -> None:
         for event in pg.event.get():
@@ -217,6 +221,8 @@ class Game:
     def state_set_menu(self):
         self.state = "MENU"
         print("GAME STATE: MENU")
+        self.game_ui.hide()
+        self.menu.show()
 
     def spawn_wave(self):
         for _ in range(WAVE_MIN_SIZE, WAVE_MAX_SIZE):
