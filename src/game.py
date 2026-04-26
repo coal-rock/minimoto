@@ -20,21 +20,18 @@ from enemy import Enemy
 from small_zombie import SmallZombie
 from mid_zombie import MidZombie
 from big_zombie import BigZombie
-from bullet import Bullet, HitSpark
+from bullet import Bullet
 from menu import Menu
 from gas_can import GasCan
 from gas_arrow import GasArrow
 
 from game_ui import GameUI
+from floating_text import FloatingText
 
 DOUBLE_CLICK_TIME = 300
 HOLD_TIME = 0.15
 
 WAVE_INTERVAL_SECS = 10
-WAVE_MIN_SIZE = 10
-WAVE_MAX_SIZE = 20
-
-WAVE_PROBS = [1, 1, 1]
 
 
 class Game:
@@ -50,9 +47,12 @@ class Game:
 
     shake_duration: float = 0
     shake_intensity: float = 0
+    freeze_time: float = 0
 
     time_to_next_wave = WAVE_INTERVAL_SECS
     death_timer: float = 0
+    game_time: float = 0
+    wave_count: int = 0
 
     menu: Menu
     game_ui: GameUI
@@ -66,12 +66,14 @@ class Game:
     bullets: pg.sprite.Group[Bullet]
 
     volume: float = 0.3
-    skulls_to_upgrade = [1, 5, 10, 20, 30, 40, 50]
+    skulls_to_upgrade = [1, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 10]
 
     def __init__(self, screen: pg.Surface) -> None:
         self.screen = screen
         self.surface = pg.Surface((WIDTH, HEIGHT))
         self.font = pg.font.Font(get_dir("fonts/BoldPixels.ttf"))
+
+        self.game_over_sound = load_sound("sound/game_over.mp3", 1)
 
         self.upgrade_left = UICard("selected", "left")
         self.upgrade_right = UICard("unselected", "right")
@@ -108,7 +110,7 @@ class Game:
         self.gas_cans = pg.sprite.Group()
 
         self.car = Car(self.group, self.screen, self.bullets, self)
-        self.car.position = Vector2(101 * 16, 68.7 * 16)
+        self.car.position = Vector2(101.9 * 16, 69.1 * 16)
         self.group.add(self.car)
         self.group.center(self.car.position + Vector2(-140, -40))
 
@@ -125,6 +127,12 @@ class Game:
         self.game_ui = GameUI(screen)
         self.state = "MENU"
 
+        # # Create vignette
+        # self.vignette = pg.Surface((WIDTH, HEIGHT), pg.SRCALPHA)
+        # for i in range(WIDTH // 2, 0, -1):
+        #     alpha = int(160 * (1 - (i / (WIDTH // 2)))**2)
+        #     pg.draw.circle(self.vignette, (0, 0, 0, alpha), (WIDTH // 2, HEIGHT // 2), WIDTH // 2 + (WIDTH // 2 - i))
+
         self.upgrade_types = [
             "jump",
             "fire_rate",
@@ -140,12 +148,14 @@ class Game:
     def draw(self) -> None:
         self.screen.fill((0, 0, 0))
         if self.state == "RUNNING":
-            if Vector2(self.group.view.center).distance_to(self.car.position) > 10:
-                target_center = Vector2(self.group.view.center).lerp(
-                    self.car.position, 0.1
-                )
+            # Camera lead-in
+            lead_offset = self.car.velocity_dir * (self.car.speed * 0.2)
+            target_pos = self.car.position + lead_offset
+
+            if Vector2(self.group.view.center).distance_to(target_pos) > 5:
+                target_center = Vector2(self.group.view.center).lerp(target_pos, 0.1)
             else:
-                target_center = self.car.position
+                target_center = target_pos
 
             if self.shake_duration > 0:
                 shake_offset = Vector2(
@@ -159,6 +169,9 @@ class Game:
         # redrawing here is a gross hack but like don't question it
         self.car.draw()
         self.group.draw(self.screen)
+
+        # if self.state == "RUNNING":
+        # self.screen.blit(self.vignette, (0, 0))
 
         # text = self.font.render(
         #     f"{self.fps}\nHealth: {self.car.health}\nGas: {self.car.gas}\nBones: {self.car.skulls}\nZPos: {self.car.z_pos}",
@@ -266,6 +279,9 @@ class Game:
             self.car.turning = "drift_in"
             return
 
+        if just_released[pg.K_0]:
+            self.car.take_damage()
+
         if just_released[pg.K_SPACE]:
             if self.car.turning == "drift_in":
                 # click
@@ -316,7 +332,7 @@ class Game:
         self.menu.show()
 
     def restart(self):
-        pg.mixer.stop() # Stop all ongoing sounds (drift loops, etc)
+        pg.mixer.stop()
 
         self.enemies.empty()
         self.bullets.empty()
@@ -324,20 +340,19 @@ class Game:
         self.group.empty()
 
         self.car = Car(self.group, self.screen, self.bullets, self)
-        self.car.position = Vector2(101 * 16, 68.7 * 16)
+        self.car.position = Vector2(101.9 * 16, 69.1 * 16)
         self.group.add(self.car)
-
-        # Reset camera
-        self.group.center(self.car.position)
+        self.group.center(self.car.position + Vector2(-140, -40))
 
         self.gas_arrow = GasArrow(self.car, self.group, self.gas_cans)
 
         self.skulls_to_upgrade = [1, 5, 10, 20, 30, 40, 50]
         self.death_timer = 0
+        self.game_time = 0
+        self.wave_count = 0
         self.time_to_next_wave = WAVE_INTERVAL_SECS
         self.bullets_to_shoot = 0
 
-        # Reset music volume
         self.volume = 0.3
         pg.mixer.music.set_volume(self.volume)
 
@@ -346,11 +361,24 @@ class Game:
         print("GAME RESTARTED")
 
     def spawn_wave(self):
-        for _ in range(WAVE_MIN_SIZE, WAVE_MAX_SIZE):
+        self.wave_count += 1
+
+        difficulty = min(1.0, self.game_time / 100.0)
+
+        min_size = int(3 + (difficulty * 12))
+        max_size = int(6 + (difficulty * 24))
+
+        probs = [
+            1.0,  # Small
+            min(1.0, difficulty * 1.5),  # Mid
+            min(0.5, difficulty * 1.0),  # Big
+        ]
+
+        for _ in range(min_size, max_size):
             for i in range(0, 3):
                 enemy_class = [SmallZombie, MidZombie, BigZombie][i]
 
-                if random.random() < WAVE_PROBS[i]:
+                if random.random() < probs[i]:
                     match random.randint(1, 4):
                         # up
                         case 1:
@@ -386,8 +414,8 @@ class Game:
                         self.group,
                     )
 
-                self.group.add(enemy)
-                self.enemies.add(enemy)
+                    self.group.add(enemy)
+                    self.enemies.add(enemy)
         pass
 
     def spawn_gas(self):
@@ -422,7 +450,16 @@ class Game:
                     break
 
         GasCan(pos, self.car, self.group, self.gas_cans)
+
+    def spawn_floating_text(self, pos: Vector2, text: str, color: tuple[int, int, int]):
+        ft = FloatingText(pos, text, color, get_dir("fonts/BoldPixels.ttf"), 16)
+        self.group.add(ft)
+
     def update(self, dt: float) -> None:
+        if self.freeze_time > 0:
+            self.freeze_time -= dt
+            return
+
         self.car.accelerating = True
 
         if self.state == "RUNNING" or self.state == "MENU" or self.state == "GAMEOVER":
@@ -444,10 +481,21 @@ class Game:
             self.upgrade_right.update(dt)
 
         if self.state == "RUNNING":
-            if self.car.health <= 0 or self.car.gas <= 0:
+            self.game_time += dt
+
+            # Death conditions
+            is_dead = False
+            if self.car.health <= 0:
+                is_dead = True
+            elif self.car.gas <= 0 and self.car.speed <= 0:
+                is_dead = True
+
+            if is_dead:
                 self.death_timer += dt
                 if self.death_timer >= 1.0:
                     self.state = "GAMEOVER"
+                    self.game_over_sound.set_volume(0.45)
+                    self.game_over_sound.play()
             else:
                 self.death_timer = 0
 
@@ -597,13 +645,18 @@ class Game:
                         ),
                     )
 
-                    self.car.add_bullet(Vector2(closest.rect.center))
-                    if self.bullets_to_shoot != 0:
-                        self.bullets_to_shoot -= 1
-                        self.car.time_since_last_shot = self.car.shot_delay - 0.1
+                    dist_to_closest = Vector2(self.car.rect.center).distance_to(
+                        closest.rect.center
+                    )
 
-                    if self.bullets_to_shoot == 0:
-                        self.car.time_since_last_shot = 0
+                    if dist_to_closest < 250:
+                        self.car.add_bullet(Vector2(closest.rect.center))
+                        if self.bullets_to_shoot != 0:
+                            self.bullets_to_shoot -= 1
+                            self.car.time_since_last_shot = self.car.shot_delay - 0.1
+
+                        if self.bullets_to_shoot == 0:
+                            self.car.time_since_last_shot = 0
                 else:
                     # If no enemies in FOV, we don't shoot and we don't start/continue a burst
                     # but we keep the timer running so it can shoot as soon as an enemy enters FOV

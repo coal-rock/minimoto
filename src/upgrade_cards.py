@@ -73,7 +73,8 @@ class UICard:
 
         self.car.angle = 90
         self.timer += dt
-        if self.timer > 1.5:
+        print(self.timer)
+        if self.timer > 1:
             self.car.jump()
             self.timer = 0
 
@@ -87,7 +88,7 @@ class UICard:
 
         self.car.angle = 90
         self.timer += dt
-        if self.timer > 0.5:
+        if self.timer > 1.5:
             self.car.add_bullet(Vector2(1000, 150))
             self.timer = 0
 
@@ -114,7 +115,7 @@ class UICard:
         self.car.angle = 90
         self.timer += dt
 
-        if self.timer > 1.5:
+        if self.timer > 1:
             self.car.jump()
             self.timer = 0
 
@@ -203,7 +204,7 @@ class UICard:
 
     def update(self, dt: float):
         if self.state != "selected":
-            self.timer = 0
+            self.timer = 0.5
             self.demo_objects = []
             self.car.speed = 0
             self.car.z_pos = 0

@@ -17,5 +17,6 @@ class SmallZombie(Enemy):
     speed = 40
     knockback_strength = 350
     animation_speed = 4
+    skull_drop_rate = 0.2
 
     pass

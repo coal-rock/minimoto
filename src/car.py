@@ -15,19 +15,19 @@ from trail import Trail
 from cloud import Cloud
 from explosion_puff import FirePuff
 
-CAR_MAX_SPEED = 400
+CAR_MAX_SPEED = 340
 CAR_ACCEL_SPEED = 300
 CAR_DECCEL_SPEED = 450
 CAR_DECCEL_NO_GAS = 100
 CAR_LANDING_DECCEL_SPEED = 5000
 
-CAR_INITIAL_TURN_SPEED = 600
-CAR_TURN_ACCEL = 300
+CAR_INITIAL_TURN_SPEED = 500
+CAR_TURN_ACCEL = 250
 CAR_TURN_DECCEL = 350
 CAR_MAX_TURN_SPEED = 12 * 12
 CAR_TURN_THRESHOLD = 30
 
-CAR_SPEED_DRIFT_THRESHOLD = 200
+CAR_SPEED_DRIFT_THRESHOLD = 100
 CAR_DRIFT_BOOST = [100, 150, 200]
 CAR_DRIFT_POST_TIME = [0.2, 0.5, 0.7]
 CAR_DRIFT_BOOST_TIME = [0.7, 1.4, 2.3]
@@ -38,7 +38,7 @@ CAR_COLLISION_LANDING_MAX_SPEED = 250
 CAR_JUMP_FOCE = 300
 CAR_GRAVITY = -1100
 
-CAR_GAS_DRAIN = 2.2
+CAR_GAS_DRAIN = 2.8
 CAR_GAS_DRIFT_DRAIN = 1.2
 
 CAR_SHOT_TIME = 1
@@ -47,12 +47,13 @@ OFFSET = Vector2(100, 100)
 
 
 class Car(pg.sprite.Sprite):
-    health: int = 3
-    max_health: int = 3
+    health: int = 5
+    max_health: int = 5
 
     gas: float = 100
     skulls: int = 0
     invuln_time: float = 0
+    hit_flash_time: float = 0
 
     shot_delay: float = CAR_SHOT_TIME
     time_since_last_shot: float = 0
@@ -82,9 +83,11 @@ class Car(pg.sprite.Sprite):
     spark_br: Vector2
     time: float
     z_pos: float
+    old_z_pos: float = 0
     last_z_pos: float
     colliding: Literal["tall", "short", None]
     collision_speed: float = 0
+    smoke_timer: float = 0
 
     image: pg.Surface
     rect: pg.Rect
@@ -149,18 +152,18 @@ class Car(pg.sprite.Sprite):
         self.world_sparks = []
         self.z_pos = 0
         self.time_since_last_fire_puff = 0.0
-        self.old_z_pos = 0
         self.z_velocity = 0
         self.colliding = None
         self.num_bullets = 1
+        self.collision_sound_timer = 0
 
-        self.jump_sound = load_sound("sound/hop.mp3", 600)
-        self.bump_sound = load_sound("sound/bump.mp3", 600)
-        self.drift_sound = load_sound("sound/drift.mp3", 10)
+        self.jump_sound = load_sound("sound/hop.mp3", 0.5)
+        self.bump_sound = load_sound("sound/bump.mp3", 0.6)
+        self.drift_sound = load_sound("sound/drift.mp3", 0.1)
         self.boost_sound = load_sound("sound/boost.mp3", 1)
-        self.land_sound = load_sound("sound/land.mp3", 1)
-        self.shoot_sound = load_sound("sound/shoot.wav", 1)
-        self.explosion_sound = load_sound("sound/hit.wav", 1)
+        self.land_sound = load_sound("sound/land.mp3", 0.5)
+        self.shoot_sound = load_sound("sound/shoot.wav", 0.2)
+        self.explosion_sound = load_sound("sound/explosion.wav", 0.3)
 
         self.drift_sound_channel = None
         self.gas_drain_mult = 1
@@ -169,17 +172,19 @@ class Car(pg.sprite.Sprite):
         if self.invuln_time > 0 or self.health <= 0:
             return
         self.health -= 1
+        self.hit_flash_time = 0.15
+        self.game.freeze_time = 0.05
         if self.health <= 0:
             self.health = 0
             self.explode()
 
         self.invuln_time = 1.5
         self.game.shake_duration = 0.5
-        self.game.shake_intensity = 5
+        self.game.shake_intensity = 8
         self.bump_sound.play()
 
     def explode(self):
-        self.explosion_sound.set_volume(1.0)
+        self.explosion_sound.set_volume(0.25)
         self.explosion_sound.play()
         self.end_drift(False)
 
@@ -356,14 +361,27 @@ class Car(pg.sprite.Sprite):
         if self.z_pos > 0 and wall_type == "short":
             return
 
-        self.position = self.old_position
-        self.rect.center = self.position
+        self.position = Vector2(self.old_position)
+
+        if collision_point:
+            # Nudge away from the collision point to prevent sticking
+            # collision_point is relative to the car's 300x300 surface
+            center = Vector2(150, 150)
+            diff = center - Vector2(collision_point)
+            if diff.length() > 0:
+                self.position += diff.normalize() * 4.0
+
+        self.rect.center = (round(self.position.x), round(self.position.y))
 
         # if we on top of something, we should hop to get off
         if self._layer == 4 and not self.colliding == "tall":
             if wall_type == "short":
                 self.jump_sound.play()
                 self.z_velocity += 180
+
+            if self.collision_sound_timer <= 0:
+                self.bump_sound.play()
+                self.collision_sound_timer = 0.2
 
             self.speed -= CAR_LANDING_DECCEL_SPEED * dt
             if self.speed > CAR_COLLISION_LANDING_MAX_SPEED:
@@ -372,7 +390,10 @@ class Car(pg.sprite.Sprite):
             if self.speed < CAR_COLLISION_LANDING_MIN_SPEED:
                 self.speed = CAR_COLLISION_LANDING_MIN_SPEED
         else:
-            self.bump_sound.play()
+            if self.collision_sound_timer <= 0:
+                self.bump_sound.play()
+                self.collision_sound_timer = 0.2
+
             self.collision_speed = abs(self.speed)
 
             is_front = True
@@ -476,7 +497,11 @@ class Car(pg.sprite.Sprite):
 
         # hack
         if self.health != 0:
-            self.image.blit(self.frames[self.frame_num], draw_pos)
+            frame = self.frames[self.frame_num]
+            if self.hit_flash_time > 0:
+                self.image.blit(get_white_surface(frame), draw_pos)
+            else:
+                self.image.blit(frame, draw_pos)
         else:
             self.frame_num = (round((self.display_angle % 360) / 45) + 6) % 8
             self.image.blit(self.burnt_frames[self.frame_num], draw_pos)
@@ -493,6 +518,8 @@ class Car(pg.sprite.Sprite):
         bullet = Bullet(bullet_start, target, self.group)
         self.group.add(bullet)
         self.bullets_group.add(bullet)
+        self.game.shake_duration = 0.1
+        self.game.shake_intensity = 1
         self.shoot_sound.set_volume(0.2)
         self.shoot_sound.play()
 
@@ -665,6 +692,8 @@ class Car(pg.sprite.Sprite):
 
     def update(self, dt: float) -> None:
         self.time += dt
+        self.hit_flash_time -= dt
+        self.hit_flash_time = max(0, self.hit_flash_time)
 
         deccel_speed = (
             CAR_DECCEL_SPEED * 0.8 if self.post_drift_time != 0 else CAR_DECCEL_SPEED
@@ -785,6 +814,51 @@ class Car(pg.sprite.Sprite):
 
         self.invuln_time -= dt
         self.invuln_time = max(0, self.invuln_time)
+
+        self.collision_sound_timer -= dt
+        self.collision_sound_timer = max(0, self.collision_sound_timer)
+
+        # Low health smoke effect
+        if self.health == 1:
+            self.smoke_timer += dt
+            # Emit smoke slightly less frequently
+            smoke_delay = max(0.025, 0.15 - (self.speed / self.car_max_speed) * 0.1)
+            if self.smoke_timer > smoke_delay:
+                self.smoke_timer = 0
+
+                # Alternate between dark smoke, fire, white smoke, and grey smoke
+                r = random.random()
+                if r < 0.3:
+                    colors = [(100, 100, 100), (50, 50, 50), (20, 20, 20)]  # Dark
+                elif r < 0.5:
+                    colors = [
+                        (255, 255, 255),
+                        (220, 220, 220),
+                        (200, 200, 200),
+                    ]  # White
+                elif r < 0.7:
+                    colors = [(150, 150, 150), (120, 120, 120), (100, 100, 100)]  # Grey
+                elif r < 0.9:
+                    colors = [(255, 200, 0), (255, 100, 0), (255, 50, 0)]  # Fire
+                else:
+                    colors = [(80, 80, 80), (60, 60, 60), (40, 40, 40)]  # Soot
+
+                offset = Vector2(
+                    random.uniform(-10, 10), random.uniform(-10, 10)
+                ).rotate(self.display_angle)
+                # Shift slightly forward to engine bay area (Vector2(0, -15) is forward)
+                forward_shift = Vector2(0, -15).rotate(self.display_angle)
+
+                # Apply z_pos and forward shift
+                pos = self.position + offset + Vector2(0, -self.z_pos) + forward_shift
+                vel = Vector2(random.uniform(-12, 12), random.uniform(-25, -8)).rotate(
+                    self.display_angle
+                )
+                # Slightly smaller size
+                puff = FirePuff(
+                    pos, vel, random.uniform(2, 5), colors, random.uniform(0.6, 1.2)
+                )
+                self.game.group.add(puff)
 
         self.update_shot(dt)
         self.update_gas(dt)

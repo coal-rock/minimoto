@@ -15,3 +15,4 @@ class MidZombie(Enemy):
     knockback_strength = 300
     animation_speed = 7
     health = 2
+    skull_drop_rate = 0.3

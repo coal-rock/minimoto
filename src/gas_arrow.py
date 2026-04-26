@@ -1,6 +1,7 @@
 import pygame as pg
 from pygame.math import Vector2
 from helper import load_image, get_dir
+import math
 
 
 class GasArrow(pg.sprite.Sprite):
@@ -43,7 +44,7 @@ class GasArrow(pg.sprite.Sprite):
         if active_gas_cans:
             nearest_gas = min(active_gas_cans, key=lambda g: car_pos.distance_to(g.pos))
             actual_dist_m = car_pos.distance_to(nearest_gas.pos) / 16
-            if actual_dist_m > 20:
+            if actual_dist_m > 20 or self.car.gas < 30:
                 target_alpha = 255
 
         alpha_speed = 600 if target_alpha == 0 else 400
@@ -102,7 +103,12 @@ class GasArrow(pg.sprite.Sprite):
         self.image.blit(dist_text, text_pos)
 
         # smooth alpha (ruby)
-        self.image.set_alpha(int(self.alpha))
+        current_alpha = self.alpha
+        if self.car.gas < 15:
+            flash = (math.sin(pg.time.get_ticks() * 0.015) + 1) / 2
+            current_alpha *= 0.3 + 0.7 * flash
+
+        self.image.set_alpha(int(current_alpha))
         self.rect = self.image.get_rect(
             center=(round(arrow_center.x), round(arrow_center.y))
         )

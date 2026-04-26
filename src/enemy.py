@@ -99,7 +99,7 @@ class Enemy(pg.sprite.Sprite):
 
     def take_damage(self, amount: int = 1):
         self.health -= amount
-        self.hit_flash_time = 0.1
+        self.hit_flash_time = 0.08
 
         hit_sound = load_sound("sound/hit.wav", 0.5)
         hit_sound.play()
@@ -140,13 +140,7 @@ class Enemy(pg.sprite.Sprite):
 
         if self.hit_flash_time > 0:
             self.hit_flash_time -= dt
-            # Create a white silhouette
-            flash_surf = pg.Surface(self.image.get_size(), pg.SRCALPHA)
-            mask = pg.mask.from_surface(self.image)
-            mask_surf = mask.to_surface(
-                setcolor=(255, 255, 255, 255), unsetcolor=(0, 0, 0, 0)
-            )
-            self.image = mask_surf
+            self.image = get_white_surface(self.image)
 
         self.mask = pg.mask.from_surface(self.image)
 

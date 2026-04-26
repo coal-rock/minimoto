@@ -1,4 +1,5 @@
 from helper import *
+from pygame.math import Vector2
 from floor_item import Item
 
 
@@ -14,3 +15,6 @@ class Heart(Item):
     def collect(self):
         self.car.health = min(self.car.health + 1, self.car.max_health)
         self.sound.play()
+        self.car.game.spawn_floating_text(
+            Vector2(self.rect.center), "+1 HEALTH", (255, 50, 50)
+        )
