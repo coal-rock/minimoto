@@ -7,7 +7,7 @@ from bones import BonesUI
 from helper import load_image
 
 HEARTS_IMAGE_PATH: str = "heart/ui.png"
-HEARTS_X: int = 0
+HEARTS_X: int = 20
 HEARTS_Y: int = 10
 
 GAS_IMAGE_PATH: str = "gas_can/ui.png"

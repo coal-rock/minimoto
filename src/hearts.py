@@ -8,7 +8,7 @@ class HeartsUI:
     __surface: pg.Surface
     __x: int
     __y: int
-    __spacing_px: int = 10
+    __spacing_px: int = 30
 
     def __init__(self, 
                  veiw_port: pg.Surface, 
