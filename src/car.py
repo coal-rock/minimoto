@@ -487,6 +487,9 @@ class Car(pg.sprite.Sprite):
     def update(self, dt: float) -> None:
         self.time += dt
 
+        if self.gas < 0:
+            self.accelerating = False
+
         deccel_speed = (
             CAR_DECCEL_SPEED * 0.8 if self.post_drift_time != 0 else CAR_DECCEL_SPEED
         )
