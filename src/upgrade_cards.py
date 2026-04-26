@@ -20,9 +20,9 @@ class UICard:
         self.state: Literal["selected", "unselected"] = state
         self.pos = pos
         self.upgrade_type = upgrade_type
-        
+
         self.image = load_image(f"upgrade_menu/unselected_{self.pos}.png")
-        
+
         self.text = ""
         self.scale = 1.0
 
@@ -201,6 +201,7 @@ class UICard:
             car.shot_delay *= 0.9
         elif self.upgrade_type == "health":
             car.max_health += 1
+            car.health += 1
         elif self.upgrade_type == "knockback":
             car.knockback_strength *= 1.1
         elif self.upgrade_type == "projectiles":
@@ -251,9 +252,11 @@ class UICard:
                 temp_heart = self.heart_ui.copy()
                 temp_heart.set_alpha(alpha)
                 draw_pos = (150 - temp_heart.get_width() // 2, 90)
-                
+
                 mask = pg.mask.from_surface(temp_heart)
-                shadow = mask.to_surface(setcolor=(0, 0, 0, 180), unsetcolor=(0, 0, 0, 0))
+                shadow = mask.to_surface(
+                    setcolor=(0, 0, 0, 180), unsetcolor=(0, 0, 0, 0)
+                )
                 shadow.set_alpha(alpha)
                 surface.blit(shadow, (draw_pos[0] + 6, draw_pos[1] + 6))
                 surface.blit(temp_heart, draw_pos)
@@ -271,7 +274,10 @@ class UICard:
                         )
 
             # Draw car shadow
-            car_draw_pos = (self.car.rect.x + effect_offset.x, self.car.rect.y + effect_offset.y)
+            car_draw_pos = (
+                self.car.rect.x + effect_offset.x,
+                self.car.rect.y + effect_offset.y,
+            )
             mask = pg.mask.from_surface(self.car.frames[self.car.frame_num])
             shadow = mask.to_surface(setcolor=(0, 0, 0, 180), unsetcolor=(0, 0, 0, 0))
             # The car frame is drawn at (100, 100 - self.z_pos), we need to match this offset for the shadow mask
@@ -285,10 +291,12 @@ class UICard:
                 fill_width = bar_width * (1.0 - (self.timer / 4.0))
                 pg.draw.rect(surface, (50, 50, 50), (120, 100, bar_width, bar_height))
                 pg.draw.rect(surface, (255, 200, 0), (120, 100, fill_width, bar_height))
-                
+
                 draw_pos = (120 - 25, 100 - 8)
                 mask = pg.mask.from_surface(self.gas_ui)
-                shadow = mask.to_surface(setcolor=(0, 0, 0, 180), unsetcolor=(0, 0, 0, 0))
+                shadow = mask.to_surface(
+                    setcolor=(0, 0, 0, 180), unsetcolor=(0, 0, 0, 0)
+                )
                 surface.blit(shadow, (draw_pos[0] + 6, draw_pos[1] + 6))
                 surface.blit(self.gas_ui, draw_pos)
 
@@ -296,15 +304,19 @@ class UICard:
             if sprite != self.car:
                 layer = getattr(sprite, "_layer", 0)
                 draw_pos = sprite.rect.topleft + effect_offset
-                
+
                 if behind and layer < 3:
                     mask = pg.mask.from_surface(sprite.image)
-                    shadow = mask.to_surface(setcolor=(0, 0, 0, 180), unsetcolor=(0, 0, 0, 0))
+                    shadow = mask.to_surface(
+                        setcolor=(0, 0, 0, 180), unsetcolor=(0, 0, 0, 0)
+                    )
                     surface.blit(shadow, (draw_pos[0] + 6, draw_pos[1] + 6))
                     surface.blit(sprite.image, draw_pos)
                 elif not behind and layer >= 3:
                     mask = pg.mask.from_surface(sprite.image)
-                    shadow = mask.to_surface(setcolor=(0, 0, 0, 180), unsetcolor=(0, 0, 0, 0))
+                    shadow = mask.to_surface(
+                        setcolor=(0, 0, 0, 180), unsetcolor=(0, 0, 0, 0)
+                    )
                     surface.blit(shadow, (draw_pos[0] + 6, draw_pos[1] + 6))
                     surface.blit(sprite.image, draw_pos)
 
@@ -361,23 +373,39 @@ class UICard:
             delay = 0.15
             if self.progress > delay:
                 adjusted_progress = (self.progress - delay) / (1.0 - delay)
-                rect = pg.Rect(card_pos[0], card_pos[1], image.get_width(), image.get_height())
-                points = [rect.topleft, rect.topright, rect.bottomright, rect.bottomleft, rect.topleft]
+                rect = pg.Rect(
+                    card_pos[0], card_pos[1], image.get_width(), image.get_height()
+                )
+                points = [
+                    rect.topleft,
+                    rect.topright,
+                    rect.bottomright,
+                    rect.bottomleft,
+                    rect.topleft,
+                ]
                 perimeter = 2 * rect.width + 2 * rect.height
                 target_len = perimeter * adjusted_progress
 
                 curr_len = 0
                 for i in range(4):
                     p1 = Vector2(points[i])
-                    p2 = Vector2(points[i+1])
+                    p2 = Vector2(points[i + 1])
                     seg_len = p1.distance_to(p2)
 
                     if curr_len + seg_len <= target_len:
-                        pg.draw.line(surface, (255, 255, 255), points[i], points[i+1], 4)
+                        pg.draw.line(
+                            surface, (255, 255, 255), points[i], points[i + 1], 4
+                        )
                         curr_len += seg_len
                     else:
                         rem = target_len - curr_len
                         ratio = rem / seg_len
                         p_end = p1.lerp(p2, ratio)
-                        pg.draw.line(surface, (255, 255, 255), points[i], (int(p_end.x), int(p_end.y)), 4)
+                        pg.draw.line(
+                            surface,
+                            (255, 255, 255),
+                            points[i],
+                            (int(p_end.x), int(p_end.y)),
+                            4,
+                        )
                         break

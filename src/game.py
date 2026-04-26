@@ -130,9 +130,9 @@ class Game:
         self.gas_arrow = GasArrow(self.car, self.group, self.gas_cans)
 
         pg.mixer.music.set_endevent(MUSIC_END)
-        pg.mixer.music.load("assets/music/1.wav")
+        pg.mixer.music.load("assets/music/1.ogg")
         for i in range(2, 9):
-            pg.mixer.music.queue(f"assets/music/{i}.wav")
+            pg.mixer.music.queue(f"assets/music/{i}.ogg")
 
         pg.mixer.music.set_volume(self.volume)
         pg.mixer.music.play()
@@ -288,9 +288,9 @@ class Game:
                 break
 
             elif event.type == MUSIC_END:
-                pg.mixer.music.load("assets/music/1.wav")
+                pg.mixer.music.load("assets/music/1.ogg")
                 for i in range(2, 9):
-                    pg.mixer.music.queue(f"assets/music/{i}.wav")
+                    pg.mixer.music.queue(f"assets/music/{i}.ogg")
                 pg.mixer.music.play()
 
             elif event.type == pg.KEYDOWN:
