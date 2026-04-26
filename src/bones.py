@@ -7,10 +7,12 @@ class BonesUI:
         pass
 
     def draw(self, amt: int):
-        pass
+        if self.__hidden:
+            return
 
     def update(self, dt: float, bones_amd: int):
-        pass
+        if self.__hidden:
+            return
     
     def hide(self):
         self.__hidden = True
