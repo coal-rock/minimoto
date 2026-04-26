@@ -250,7 +250,13 @@ class UICard:
                 alpha = abs(math.sin(self.timer * math.pi)) * 255
                 temp_heart = self.heart_ui.copy()
                 temp_heart.set_alpha(alpha)
-                surface.blit(temp_heart, (150 - temp_heart.get_width() // 2, 90))
+                draw_pos = (150 - temp_heart.get_width() // 2, 90)
+                
+                mask = pg.mask.from_surface(temp_heart)
+                shadow = mask.to_surface(setcolor=(0, 0, 0, 180), unsetcolor=(0, 0, 0, 0))
+                shadow.set_alpha(alpha)
+                surface.blit(shadow, (draw_pos[0] + 6, draw_pos[1] + 6))
+                surface.blit(temp_heart, draw_pos)
 
         if behind:
             if self.upgrade_type == "knockback":
@@ -264,6 +270,14 @@ class UICard:
                             2,
                         )
 
+            # Draw car shadow
+            car_draw_pos = (self.car.rect.x + effect_offset.x, self.car.rect.y + effect_offset.y)
+            mask = pg.mask.from_surface(self.car.frames[self.car.frame_num])
+            shadow = mask.to_surface(setcolor=(0, 0, 0, 180), unsetcolor=(0, 0, 0, 0))
+            # The car frame is drawn at (100, 100 - self.z_pos), we need to match this offset for the shadow mask
+            draw_pos = (100 + effect_offset.x, 100 - self.car.z_pos + effect_offset.y)
+            surface.blit(shadow, (draw_pos[0] + 6, draw_pos[1] + 6))
+
         if not behind:
             if self.upgrade_type == "gas":
                 bar_width = 60
@@ -271,7 +285,12 @@ class UICard:
                 fill_width = bar_width * (1.0 - (self.timer / 4.0))
                 pg.draw.rect(surface, (50, 50, 50), (120, 100, bar_width, bar_height))
                 pg.draw.rect(surface, (255, 200, 0), (120, 100, fill_width, bar_height))
-                surface.blit(self.gas_ui, (120 - 25, 100 - 8))
+                
+                draw_pos = (120 - 25, 100 - 8)
+                mask = pg.mask.from_surface(self.gas_ui)
+                shadow = mask.to_surface(setcolor=(0, 0, 0, 180), unsetcolor=(0, 0, 0, 0))
+                surface.blit(shadow, (draw_pos[0] + 6, draw_pos[1] + 6))
+                surface.blit(self.gas_ui, draw_pos)
 
         for sprite in self.car.group:
             if sprite != self.car:
@@ -280,13 +299,13 @@ class UICard:
                 
                 if behind and layer < 3:
                     mask = pg.mask.from_surface(sprite.image)
-                    shadow = mask.to_surface(setcolor=(0, 0, 0, 80), unsetcolor=(0, 0, 0, 0))
-                    surface.blit(shadow, (draw_pos[0] + 4, draw_pos[1] + 4))
+                    shadow = mask.to_surface(setcolor=(0, 0, 0, 180), unsetcolor=(0, 0, 0, 0))
+                    surface.blit(shadow, (draw_pos[0] + 6, draw_pos[1] + 6))
                     surface.blit(sprite.image, draw_pos)
                 elif not behind and layer >= 3:
                     mask = pg.mask.from_surface(sprite.image)
-                    shadow = mask.to_surface(setcolor=(0, 0, 0, 80), unsetcolor=(0, 0, 0, 0))
-                    surface.blit(shadow, (draw_pos[0] + 4, draw_pos[1] + 4))
+                    shadow = mask.to_surface(setcolor=(0, 0, 0, 180), unsetcolor=(0, 0, 0, 0))
+                    surface.blit(shadow, (draw_pos[0] + 6, draw_pos[1] + 6))
                     surface.blit(sprite.image, draw_pos)
 
     def draw(self, surface: pg.Surface):

@@ -82,6 +82,7 @@ class Game:
         self.game_over_sound = load_sound("sound/game_over.mp3", 1)
         self.game_start_sound = load_sound("sound/game_start.wav", 1)
         self.upgrade_charge_sound = load_sound("sound/upgrade.mp3", 1.0)
+        self.upgrade_swap_sound = load_sound("sound/menu_select.wav", 0.5)
         self.upgrade_charge_channel = None
 
         self.space_held_time = 0.0
@@ -387,9 +388,11 @@ class Game:
                     if self.upgrade_left.state == "selected":
                         self.upgrade_left.state = "unselected"
                         self.upgrade_right.state = "selected"
+                        self.upgrade_swap_sound.play()
                     elif self.upgrade_right.state == "selected":
                         self.upgrade_left.state = "selected"
                         self.upgrade_right.state = "unselected"
+                        self.upgrade_swap_sound.play()
 
             return
 
@@ -816,6 +819,7 @@ class Game:
                 self.state = "UPGRADE"
                 self.game_ui.hide()
                 pg.mixer.pause()
+                self.game_start_sound.play()
                 pg.mixer.music.set_volume(self.volume * 0.3)
             else:
                 self.state = "RUNNING"
