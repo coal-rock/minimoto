@@ -378,12 +378,12 @@ class Game:
 
                 held_time = self.space_bar_press_tmr
                 self.space_bar_press_tmr = 0.0
-                
+
                 if self.upgrade_left.state == "selected":
                     self.upgrade_left.reset_progress()
                 elif self.upgrade_right.state == "selected":
                     self.upgrade_right.reset_progress()
-                
+
                 if held_time < 0.2:
                     if self.upgrade_left.state == "selected":
                         self.upgrade_left.state = "unselected"
@@ -829,6 +829,7 @@ class Game:
     def run(self):
         clock = pg.time.Clock()
         self.running = True
+        pg.display.set_caption("MiniMoto")
 
         try:
             while self.running:
