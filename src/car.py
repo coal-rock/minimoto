@@ -149,6 +149,9 @@ class Car(pg.sprite.Sprite):
 
         self.drift_sound_channel = None
 
+    def take_damage(self):
+        pass
+
     def jump(self):
         if self.z_pos >= 0:
             self.z_velocity = CAR_JUMP_FOCE

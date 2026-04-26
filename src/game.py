@@ -335,30 +335,44 @@ class Game:
             if car_collision_detected:
                 self.car.handle_collision(dt, car_collision_detected)
 
-            if self.car.did_just_land() or self.car.post_drift_time != 0:
-                # self.shake_duration = 0
-                # self.shake_intensity = 1
+            # if (
+            #     self.car.did_just_land()
+            #     or self.car.post_drift_time != 0
+            #     or self.car.invuln_time != 0
+            # ):
+            # self.shake_duration = 0
+            # self.shake_intensity = 1
 
-                landing_mask = self.car.get_landing_mask()
-                landing_aoe_mask = self.car.get_landing_mask_aoe()
+            landing_mask = self.car.get_landing_mask()
+            landing_aoe_mask = self.car.get_landing_mask_aoe()
 
-                landing_shift = 150  # (600 - 300) / 2
-                landing_aoe_shift = 600  # (1500 - 300) / 2
+            landing_shift = 150  # (600 - 300) / 2
+            landing_aoe_shift = 600  # (1500 - 300) / 2
 
-                for enemy in self.enemies:
-                    landing_offset = (
-                        enemy.rect.x - (self.car.rect.x - landing_shift),
-                        enemy.rect.y - (self.car.rect.y - landing_shift),
-                    )
+            for enemy in self.enemies:
+                landing_offset = (
+                    enemy.rect.x - (self.car.rect.x - landing_shift),
+                    enemy.rect.y - (self.car.rect.y - landing_shift),
+                )
 
-                    landing_aoe_offset = (
-                        enemy.rect.x - (self.car.rect.x - landing_aoe_shift),
-                        enemy.rect.y - (self.car.rect.y - landing_aoe_shift),
-                    )
+                landing_aoe_offset = (
+                    enemy.rect.x - (self.car.rect.x - landing_aoe_shift),
+                    enemy.rect.y - (self.car.rect.y - landing_aoe_shift),
+                )
 
-                    if landing_mask.overlap(enemy.mask, landing_offset):
+                if landing_mask.overlap(enemy.mask, landing_offset):
+                    if (
+                        self.car.did_just_land()
+                        or self.car.post_drift_time != 0
+                        or self.car.invuln_time != 0
+                    ):
                         enemy.kill()
-                    if landing_aoe_mask.overlap(enemy.mask, landing_aoe_offset):
+                if landing_aoe_mask.overlap(enemy.mask, landing_aoe_offset):
+                    if (
+                        self.car.did_just_land()
+                        or self.car.post_drift_time != 0
+                        or self.car.invuln_time != 0
+                    ):
                         enemy.push_back(self.car.rect.center)
 
             # shooting bullet
