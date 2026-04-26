@@ -300,6 +300,7 @@ class Game:
             # if self.car
 
             car_collision_detected = None
+            car_collision_point = None
 
             for wall_list, wall_list_type in [
                 (self.walls, "short"),
@@ -333,13 +334,17 @@ class Game:
                         wall_mask.fill()
 
                         offset = (wall.x - self.car.rect.x, wall.y - self.car.rect.y)
-                        if self.car.mask.overlap(wall_mask, offset):
+                        overlap = self.car.mask.overlap(wall_mask, offset)
+                        if overlap:
                             car_collision_detected = wall_list_type
+                            car_collision_point = overlap
                             break
+                if car_collision_detected:
+                    break
 
             self.car.colliding = car_collision_detected
             if car_collision_detected:
-                self.car.handle_collision(dt, car_collision_detected)
+                self.car.handle_collision(dt, car_collision_detected, car_collision_point)
 
             # if (
             #     self.car.did_just_land()
@@ -380,6 +385,18 @@ class Game:
                         or self.car.invuln_time != 0
                     ):
                         enemy.push_back(self.car.rect.center)
+
+                # Damage collision
+                if self.car.z_pos == 0 and self.car.invuln_time <= 0:
+                    offset = (
+                        enemy.rect.x - self.car.rect.x,
+                        enemy.rect.y - self.car.rect.y,
+                    )
+                    if self.car.mask.overlap(enemy.mask, offset):
+                        if not (
+                            self.car.did_just_land() or self.car.post_drift_time != 0
+                        ):
+                            self.car.take_damage()
 
             # shooting bullet
             if (

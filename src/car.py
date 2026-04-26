@@ -150,7 +150,13 @@ class Car(pg.sprite.Sprite):
         self.drift_sound_channel = None
 
     def take_damage(self):
-        pass
+        if self.invuln_time > 0:
+            return
+        self.health -= 1
+        self.invuln_time = 1.5
+        self.game.shake_duration = 0.5
+        self.game.shake_intensity = 5
+        self.bump_sound.play()
 
     def jump(self):
         if self.z_pos >= 0:
@@ -245,6 +251,7 @@ class Car(pg.sprite.Sprite):
         self,
         dt: float,
         wall_type: Literal["short", "tall"],
+        collision_point: tuple[int, int] | None = None,
     ) -> None:
         # if we are in the air, ignore collision
         if self.z_pos > 0 and wall_type == "short":
@@ -268,15 +275,23 @@ class Car(pg.sprite.Sprite):
         else:
             self.bump_sound.play()
             self.collision_speed = abs(self.speed)
-            self.speed *= -0.3 * dt
 
-            if self.speed > -CAR_COLLISION_MIN_SPEED:
-                self.speed = -CAR_COLLISION_MIN_SPEED
+            is_front = True
+            if collision_point:
+                center = Vector2(150, 150)
+                collision_vec = Vector2(collision_point) - center
+                forward_vec = Vector2(0, -1).rotate(self.get_angle_rot_locked())
+                is_front = collision_vec.dot(forward_vec) > 0
+
+            if is_front:
+                self.speed = min(-CAR_COLLISION_MIN_SPEED, self.speed * -0.5)
+            else:
+                self.speed = max(CAR_COLLISION_MIN_SPEED, self.speed * -0.5)
 
         # we don't call end_drift() here,
         # because we don't want the user to get the drift boost
         # maybe i should add a bail_drift() function or something (?)
-        self.turning = None
+        self.end_drift(False)
 
     def draw_motion_lines(self):
         for i in range(1, 16):
@@ -347,6 +362,10 @@ class Car(pg.sprite.Sprite):
     def draw(self) -> None:
         self.image.fill((0, 0, 0, 0))
 
+        if self.invuln_time > 0:
+            if round(self.time * 20) % 2 == 0:
+                return
+
         self.draw_headlights()
         self.draw_motion_lines()
         self.draw_shadow()
@@ -395,8 +414,8 @@ class Car(pg.sprite.Sprite):
         self.turning = "drift_in"
 
         # UNFUCK PLEASE
-        # self.drift_sound_channel = self.drift_sound.play(-1)
-        # self.drift_sound.set_volume(0.1)
+        self.drift_sound_channel = self.drift_sound.play(-1)
+        self.drift_sound.set_volume(0.1)
 
         if self.post_drift_time != 0:
             print("drift combo")
@@ -407,7 +426,7 @@ class Car(pg.sprite.Sprite):
     def start_drift_in(self):
         self.turning = "drift_in"
 
-    def end_drift(self):
+    def end_drift(self, give_boost: bool = True):
         self.turning = None
 
         if self.drift_sound_channel is not None:
@@ -417,7 +436,7 @@ class Car(pg.sprite.Sprite):
         self.visual_offset = 0
         self.velocity_dir = Vector2(0, -1).rotate(self.angle)
 
-        if self.speed > CAR_SPEED_DRIFT_THRESHOLD:
+        if self.speed > CAR_SPEED_DRIFT_THRESHOLD and give_boost:
             self.boost_sound.play()
 
             if self.time_spent_drifting > CAR_DRIFT_BOOST_TIME[2]:
