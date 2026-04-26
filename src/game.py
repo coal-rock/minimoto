@@ -59,6 +59,9 @@ class Game:
     car: Car
     bullets_to_shoot: int = 0
 
+    space_bar_press_tmr: float = 0.0
+    space_bar_press_tmr_target: float = 1.5
+
     upgrade_left: UICard
     upgrade_right: UICard
 
@@ -261,24 +264,47 @@ class Game:
         current_time = pg.time.get_ticks()
 
         if self.state == "UPGRADE":
-            if just_released[pg.K_LEFT] or just_pressed[pg.K_RIGHT]:
+            if pressed[pg.K_SPACE]:
+                self.space_bar_press_tmr += dt
                 if self.upgrade_left.state == "selected":
-                    self.upgrade_left.state = "unselected"
-                    self.upgrade_right.state = "selected"
-
+                    self.upgrade_left.scale_card(1.0 + (self.space_bar_press_tmr / 160))
                 elif self.upgrade_right.state == "selected":
-                    self.upgrade_left.state = "selected"
-                    self.upgrade_right.state = "unselected"
+                    self.upgrade_right.scale_card(1.0 + (self.space_bar_press_tmr / 160))
 
-            if just_released[pg.K_RETURN]:
+
+            if self.space_bar_press_tmr >= self.space_bar_press_tmr_target:
                 if self.upgrade_left.state == "selected":
                     self.upgrade_left.upgrade(self.car)
                 elif self.upgrade_right.state == "selected":
                     self.upgrade_right.upgrade(self.car)
 
+                self.space_bar_press_tmr = 0.0
+
                 self.skulls_to_upgrade = self.skulls_to_upgrade[1:-1]
                 self.skulls_to_upgrade.append(self.skulls_to_upgrade[0] + 10)
                 self.state = "RUNNING"
+
+            if just_released[pg.K_SPACE]:
+                self.space_bar_press_tmr = 0.0
+                if self.upgrade_left.state == "selected":
+                    self.upgrade_left.reset_scale()
+                elif self.upgrade_right.state == "selected":
+                    self.upgrade_right.reset_scale()
+                if self.space_bar_press_tmr >= 0.2:
+                    return
+
+            if just_released[pg.K_SPACE]:
+                if self.upgrade_left.state == "selected":
+                    self.upgrade_left.state = "unselected"
+                    self.upgrade_left.reset_scale()
+                    self.upgrade_right.state = "selected"
+
+                elif self.upgrade_right.state == "selected":
+                    self.upgrade_left.state = "selected"
+                    self.upgrade_right.reset_scale()
+                    self.upgrade_right.state = "unselected"
+
+            return
 
         # IF STATE IS MENU (MAIN MENU)
         # DO NO ALLOW USER INPUT

@@ -17,12 +17,14 @@ class UICard:
         ] = "jump",
     ):
 
+        self.original_selected = load_image("upgrade_menu/selected.png")
         self.selected = load_image("upgrade_menu/selected.png")
         self.unselected = load_image("upgrade_menu/unselected.png")
         self.state: Literal["selected", "unselected"] = state
         self.pos = pos
         self.upgrade_type = upgrade_type
         self.text = ""
+        self.scale = 1.0
 
         class DummyGame:
             def __init__(self):
@@ -67,6 +69,13 @@ class UICard:
             self.boost_update(0)
         elif self.upgrade_type == "gas":
             self.gas_update(0)
+
+    def scale_card(self, amt: float):
+        self.selected = pg.transform.scale_by(self.selected, amt)
+
+    def reset_scale(self):
+        del(self.selected)
+        self.selected = self.original_selected.copy()
 
     def jump_card_update(self, dt: float):
         self.text = "JUMP +1"
