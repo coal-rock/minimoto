@@ -43,6 +43,9 @@ class Game:
     fps: float = 0
     state: Literal["MENU", "RUNNING"] = "MENU"
 
+    shake_duration: float = 0
+    shake_intensity: float = 0
+
     time_to_next_wave = WAVE_INTERVAL_SECS
 
     menu: Menu
@@ -82,7 +85,7 @@ class Game:
 
         self.enemies = pg.sprite.Group()
         self.bullets = pg.sprite.Group()
-        self.car = Car(self.group, self.screen, self.bullets)
+        self.car = Car(self.group, self.screen, self.bullets, self)
         self.car.position = Vector2(415, 265)
         self.group.add(self.car)
 
@@ -98,10 +101,20 @@ class Game:
     def draw(self) -> None:
         if self.state == "RUNNING":
             if Vector2(self.group.view.center).distance_to(self.car.position) > 10:
-                lerped = Vector2(self.group.view.center).lerp(self.car.position, 0.1)
-                self.group.center(lerped)
+                target_center = Vector2(self.group.view.center).lerp(
+                    self.car.position, 0.1
+                )
             else:
-                self.group.center(self.car.position)
+                target_center = self.car.position
+
+            if self.shake_duration > 0:
+                shake_offset = Vector2(
+                    random.uniform(-self.shake_intensity, self.shake_intensity),
+                    random.uniform(-self.shake_intensity, self.shake_intensity),
+                )
+                target_center += shake_offset
+
+            self.group.center(target_center)
 
         # redrawing here is a gross hack but like don't question it
         self.car.draw()
@@ -250,6 +263,16 @@ class Game:
         self.car.accelerating = True
         self.group.update(dt)
 
+        print(self.shake_duration)
+
+        if self.shake_duration > 0:
+            self.shake_duration -= dt
+
+        if self.car.collision_speed > 0:
+            self.shake_duration = 0.2
+            self.shake_intensity = self.car.collision_speed / 100.0
+            self.car.collision_speed = 0
+
         if self.state == "MENU":
             self.menu.update(dt)
 
@@ -305,6 +328,9 @@ class Game:
                 self.car.handle_collision(dt, car_collision_detected)
 
             if self.car.did_just_land() or self.car.post_drift_time != 0:
+                # self.shake_duration = 0
+                # self.shake_intensity = 1
+
                 landing_mask = self.car.get_landing_mask()
                 landing_aoe_mask = self.car.get_landing_mask_aoe()
 

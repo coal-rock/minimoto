@@ -43,7 +43,7 @@ class Enemy(pg.sprite.Sprite):
         group: PyscrollGroup,
     ):
         super().__init__()
-        self.death_sound = load_sound("sound/zombie.mp3", 1)
+        # self.death_sound = load_sound("sound/zombie.mp3", 1)
         self._layer = 2
         self.frames = []
         self.group = group
@@ -99,7 +99,7 @@ class Enemy(pg.sprite.Sprite):
         elif random.random() < self.heart_drop_rate:
             Heart(self.pos, self.car, self.group)
 
-        self.death_sound.play()
+        # self.death_sound.play()
 
         super().kill()
 

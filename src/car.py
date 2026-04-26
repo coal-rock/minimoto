@@ -80,6 +80,7 @@ class Car(pg.sprite.Sprite):
     z_pos: float
     last_z_pos: float
     colliding: Literal["tall", "short", None]
+    collision_speed: float = 0
 
     image: pg.Surface
     rect: pg.Rect
@@ -94,9 +95,14 @@ class Car(pg.sprite.Sprite):
     body: pg.Rect
 
     def __init__(
-        self, group: PyscrollGroup, screen: pg.Surface, bullets_group: pg.sprite.Group
+        self,
+        group: PyscrollGroup,
+        screen: pg.Surface,
+        bullets_group: pg.sprite.Group,
+        game: Game,
     ) -> None:
         super().__init__()
+        self.game = game
         self._layer = 2
         self.car_max_speed = CAR_MAX_SPEED
         self.bullets_group = bullets_group
@@ -142,6 +148,7 @@ class Car(pg.sprite.Sprite):
         if self.z_pos >= 0:
             self.z_velocity = CAR_JUMP_FOCE
             self.jump_sound.play()
+            self.game.shake_duration = 0
 
     def emit_sparks(self, world: bool = False):
         if self.speed < CAR_SPEED_DRIFT_THRESHOLD:
@@ -252,6 +259,7 @@ class Car(pg.sprite.Sprite):
                 self.speed = CAR_COLLISION_LANDING_MIN_SPEED
         else:
             self.bump_sound.play()
+            self.collision_speed = abs(self.speed)
             self.speed *= -0.3 * dt
 
             if self.speed > -CAR_COLLISION_MIN_SPEED:
@@ -407,14 +415,20 @@ class Car(pg.sprite.Sprite):
             if self.time_spent_drifting > CAR_DRIFT_BOOST_TIME[2]:
                 self.speed += CAR_DRIFT_BOOST[2]
                 self.post_drift_time = CAR_DRIFT_POST_TIME[2]
+                self.game.shake_duration = 0.8
+                self.game.shake_intensity = 1
 
             elif self.time_spent_drifting > CAR_DRIFT_BOOST_TIME[1]:
                 self.speed += CAR_DRIFT_BOOST[1]
                 self.post_drift_time = CAR_DRIFT_POST_TIME[1]
+                self.game.shake_duration = 0.8
+                self.game.shake_intensity = 1
 
             elif self.time_spent_drifting > CAR_DRIFT_BOOST_TIME[0]:
                 self.speed += CAR_DRIFT_BOOST[0]
                 self.post_drift_time = CAR_DRIFT_POST_TIME[0]
+                self.game.shake_duration = 0.8
+                self.game.shake_intensity = 1
 
     def is_drifting(self):
         return self.turning == "drift_in" or self.turning == "drift_out"
