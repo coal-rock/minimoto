@@ -102,6 +102,8 @@ class Game:
         self.menu = Menu(screen, self.state_set_running)
         self.game_ui = GameUI(screen)
 
+        self.hit_sound = load_sound("sound/hit.wav", 1)
+
     def draw(self) -> None:
         if self.state == "RUNNING":
             if Vector2(self.group.view.center).distance_to(self.car.position) > 10:
@@ -133,10 +135,7 @@ class Game:
         self.screen.blit(text, (400, 0))
 
         self.menu.draw()
-        self.game_ui.draw(
-                self.car.health, 
-                self.car.gas, 
-                self.car.skulls)
+        self.game_ui.draw(self.car.health, self.car.gas, self.car.skulls)
 
     def handle_input(self, dt: float) -> None:
         for event in pg.event.get():
@@ -344,7 +343,9 @@ class Game:
 
             self.car.colliding = car_collision_detected
             if car_collision_detected:
-                self.car.handle_collision(dt, car_collision_detected, car_collision_point)
+                self.car.handle_collision(
+                    dt, car_collision_detected, car_collision_point
+                )
 
             # if (
             #     self.car.did_just_land()
@@ -432,6 +433,8 @@ class Game:
                                     speed_dec=0.8,
                                 )
                             )
+
+                        self.hit_sound.play()
                         enemy.kill()
 
         # self.menu.update(dt)

@@ -1,4 +1,3 @@
-import bullet
 from bullet import Bullet
 from pygame.locals import SRCALPHA
 import pygame as pg
@@ -146,6 +145,7 @@ class Car(pg.sprite.Sprite):
         self.drift_sound = load_sound("sound/drift.mp3", 10)
         self.boost_sound = load_sound("sound/boost.mp3", 1)
         self.land_sound = load_sound("sound/land.mp3", 1)
+        self.shoot_sound = load_sound("sound/shoot.wav", 1)
 
         self.drift_sound_channel = None
 
@@ -385,6 +385,8 @@ class Car(pg.sprite.Sprite):
         bullet = Bullet(bullet_start, target, self.group)
         self.group.add(bullet)
         self.bullets_group.add(bullet)
+        self.shoot_sound.set_volume(0.2)
+        self.shoot_sound.play()
 
     def add_trail(self) -> None:
         if self.z_pos == 0:
