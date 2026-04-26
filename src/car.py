@@ -132,9 +132,16 @@ class Car(pg.sprite.Sprite):
         self.z_velocity = 0
         self.colliding = None
 
+        self.jump_sound = load_sound("sound/hop.mp3", 600)
+        self.bump_sound = load_sound("sound/bump.mp3", 600)
+        self.drift_sound = load_sound("sound/drift.mp3", 10)
+        self.boost_sound = load_sound("sound/boost.mp3", 1)
+        self.drift_sound_channel = None
+
     def jump(self):
         if self.z_pos >= 0:
             self.z_velocity = CAR_JUMP_FOCE
+            self.jump_sound.play()
 
     def emit_sparks(self, world: bool = False):
         if self.speed < CAR_SPEED_DRIFT_THRESHOLD:
@@ -234,6 +241,7 @@ class Car(pg.sprite.Sprite):
         # if we on top of something, we should hop to get off
         if self._layer == 4 and not self.colliding == "tall":
             if wall_type == "short":
+                self.jump_sound.play()
                 self.z_velocity += 180
 
             self.speed -= CAR_LANDING_DECCEL_SPEED * dt
@@ -243,6 +251,7 @@ class Car(pg.sprite.Sprite):
             if self.speed < CAR_COLLISION_LANDING_MIN_SPEED:
                 self.speed = CAR_COLLISION_LANDING_MIN_SPEED
         else:
+            self.bump_sound.play()
             self.speed *= -0.3 * dt
 
             if self.speed > -CAR_COLLISION_MIN_SPEED:
@@ -369,6 +378,10 @@ class Car(pg.sprite.Sprite):
         self.time_spent_drifting = 0
         self.turning = "drift_in"
 
+        # UNFUCK PLEASE
+        # self.drift_sound_channel = self.drift_sound.play(-1)
+        # self.drift_sound.set_volume(0.1)
+
         if self.post_drift_time != 0:
             print("drift combo")
 
@@ -381,11 +394,16 @@ class Car(pg.sprite.Sprite):
     def end_drift(self):
         self.turning = None
 
+        if self.drift_sound_channel is not None:
+            self.drift_sound_channel.stop()
+
         self.angle = self.display_angle
         self.visual_offset = 0
         self.velocity_dir = Vector2(0, -1).rotate(self.angle)
 
         if self.speed > CAR_SPEED_DRIFT_THRESHOLD:
+            self.boost_sound.play()
+
             if self.time_spent_drifting > CAR_DRIFT_BOOST_TIME[2]:
                 self.speed += CAR_DRIFT_BOOST[2]
                 self.post_drift_time = CAR_DRIFT_POST_TIME[2]

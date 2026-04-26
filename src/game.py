@@ -90,7 +90,7 @@ class Game:
         for i in range(2, 9):
             pg.mixer.music.queue(f"assets/music/{i}.wav")
 
-        pg.mixer.music.play()
+        # pg.mixer.music.play()
 
         self.menu = Menu(screen, self.state_set_running)
         self.game_ui = GameUI(screen)

@@ -12,5 +12,11 @@ HEIGHT = 27 * 16
 def load_image(filename: str) -> pg.Surface:
     return pg.image.load(str(ASSETS_DIR / filename))
 
+
+def load_sound(filename: str, vol: float) -> pg.mixer.Sound:
+    sound = pg.mixer.Sound(str(ASSETS_DIR / filename))
+    return sound
+
+
 def exit_game():
     pg.event.post(pg.event.Event(pg.QUIT))
