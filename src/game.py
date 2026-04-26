@@ -35,6 +35,7 @@ WAVE_MAX_SIZE = 20
 
 WAVE_PROBS = [1, 1, 1]
 
+
 def throwaway():
     print("TEST")
 
@@ -134,20 +135,24 @@ class Game:
         self.car.draw()
         self.group.draw(self.screen)
 
-        text = self.font.render(
-            f"{self.fps}\nHealth: {self.car.health}\nGas: {self.car.gas}\nBones: {self.car.skulls}\nZPos: {self.car.z_pos}",
-            True,
-            (255, 255, 255),
-        )
+        # text = self.font.render(
+        #     f"{self.fps}\nHealth: {self.car.health}\nGas: {self.car.gas}\nBones: {self.car.skulls}\nZPos: {self.car.z_pos}",
+        #     True,
+        #     (255, 255, 255),
+        # )
 
-        self.screen.blit(text, (0, 0))
+        # self.screen.blit(text, (0, 0))
 
         self.menu.draw()
+<<<<<<< Updated upstream
         self.game_ui.draw(
                 self.car.health, 
                 self.car.max_health,
                 self.car.gas, 
                 self.car.skulls)
+=======
+        self.game_ui.draw(self.car.health, self.car.max_health, self.car.gas, self.car.skulls)
+>>>>>>> Stashed changes
         self.upgrade_ui.draw()
 
     def handle_input(self, dt: float) -> None:
@@ -285,7 +290,6 @@ class Game:
         pos = self.car.position + Vector2(250, 0)
         GasCan(pos, self.car, self.group)
 
-
     def update(self, dt: float) -> None:
 
         self.car.accelerating = True
@@ -361,7 +365,9 @@ class Game:
 
             self.car.colliding = car_collision_detected
             if car_collision_detected:
-                self.car.handle_collision(dt, car_collision_detected, car_collision_point)
+                self.car.handle_collision(
+                    dt, car_collision_detected, car_collision_point
+                )
 
             # if (
             #     self.car.did_just_land()
