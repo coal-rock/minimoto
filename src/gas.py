@@ -11,11 +11,11 @@ class GasUI:
     __y: int
 
     __max_w_px: int = 100
-    __max_h_px: int = 10
-    __shadow_h_px: int = 2
+    __max_h_px: int = 14
+    __shadow_h_px: int = 3
 
     __bar_offset_x: int = 40
-    __bar_offset_y: int = 13
+    __bar_offset_y: int = 11
 
     __main_rect: pg.Rect
     __shadow_rect: pg.Rect
@@ -75,7 +75,7 @@ class GasUI:
 
         if amt < self.__low_gas_threshold and self.__show_bar:
             text = self.__font.render("LOW GAS!", True, (255, 50, 50))
-            self.__vp.blit(text, (self.__x + self.__bar_offset_x, self.__y + self.__bar_offset_y + 15))
+            self.__vp.blit(text, (self.__x + self.__bar_offset_x, self.__y + self.__bar_offset_y + 19))
 
     def update(self, dt: float, gas: float):
         if self.__hidden:

@@ -263,19 +263,18 @@ class Game:
             self.screen.blit(shadow, (text_rect.x + 2, text_rect.y + 2))
             self.screen.blit(text, text_rect)
 
-            sub_text = self.font.render(
-                f"SCORE: {self.car.skulls}", True, (255, 255, 255)
-            )
+            sub_text = self.font.render(f"SCORE: {self.car.skulls}", True, (255, 255, 255))
             sub_shadow = self.font.render(f"SCORE: {self.car.skulls}", True, (0, 0, 0))
             sub_rect = sub_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
             self.screen.blit(sub_shadow, (sub_rect.x + 2, sub_rect.y + 2))
             self.screen.blit(sub_text, sub_rect)
 
-            sub_text = self.font.render("PRESS R TO RESTART", True, (255, 255, 255))
-            sub_shadow = self.font.render("PRESS R TO RESTART", True, (0, 0, 0))
-            sub_rect = sub_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 35))
-            self.screen.blit(sub_shadow, (sub_rect.x + 2, sub_rect.y + 2))
-            self.screen.blit(sub_text, sub_rect)
+            if (pg.time.get_ticks() // 600) % 2 == 0:
+                sub_text = self.font.render("PRESS R TO RESTART", True, (255, 255, 255))
+                sub_shadow = self.font.render("PRESS R TO RESTART", True, (0, 0, 0))
+                sub_rect = sub_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 35))
+                self.screen.blit(sub_shadow, (sub_rect.x + 2, sub_rect.y + 2))
+                self.screen.blit(sub_text, sub_rect)
 
     def handle_input(self, dt: float) -> None:
         for event in pg.event.get():
@@ -299,6 +298,9 @@ class Game:
                     timestamp = int(time.time())
                     pg.image.save(self.screen, f"screenshot_{timestamp}.png")
                     print(f"Screenshot saved as screenshot_{timestamp}.png")
+
+                if event.key == pg.K_f:
+                    pg.display.toggle_fullscreen()
 
                 if self.state == "RUNNING" and not self.started:
                     if event.key == pg.K_SPACE:

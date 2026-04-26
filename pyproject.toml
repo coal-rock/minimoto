@@ -16,3 +16,4 @@ distribution = false
 
 [tool.pdm.scripts]
 start = "python src/main.py"
+build = "pyinstaller --onefile --windowed --add-data 'assets:assets' src/main.py"
