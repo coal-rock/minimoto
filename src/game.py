@@ -44,7 +44,7 @@ class Game:
     font: pg.font.Font
     running: bool = True
     fps: float = 0
-    state: Literal["MENU", "RUNNING", "UPGRADE", "GAMEOVER"]
+    state: Literal["MENU", "RUNNING", "UPGRADE", "GAMEOVER", "PAUSED"]
     started: bool = False
 
     shake_duration: float = 0
@@ -83,6 +83,7 @@ class Game:
         self.game_start_sound = load_sound("sound/game_start.wav", 1)
         self.upgrade_charge_sound = load_sound("sound/upgrade.mp3", 1.0)
         self.upgrade_swap_sound = load_sound("sound/menu_select.wav", 0.5)
+        self.pause_sound = load_sound("sound/menu_select.wav", 0.6)
         self.upgrade_charge_channel = None
 
         self.space_held_time = 0.0
@@ -241,10 +242,24 @@ class Game:
                 self.screen.blit(shadow, (text_rect.x + 2, text_rect.y + 2))
                 self.screen.blit(text, text_rect)
 
-        if self.state == "UPGRADE" or self.state == "GAMEOVER":
+        if self.state == "UPGRADE" or self.state == "GAMEOVER" or self.state == "PAUSED":
             overlay = pg.Surface(self.screen.get_size(), pg.SRCALPHA)
             overlay.fill((0, 0, 0, 150))
             self.screen.blit(overlay, (0, 0))
+
+        if self.state == "PAUSED":
+            blink = (pg.time.get_ticks() // 600) % 2 == 0
+            lines = ["PAUSED", "PRESS P TO RESUME"]
+            for i, line in enumerate(lines):
+                if i == 1 and not blink:
+                    continue
+                text = self.font.render(line, True, (255, 255, 255))
+                shadow = self.font.render(line, True, (0, 0, 0))
+                text_rect = text.get_rect(
+                    center=(WIDTH // 2, HEIGHT // 2 - 20 + (i * 30))
+                )
+                self.screen.blit(shadow, (text_rect.x + 2, text_rect.y + 2))
+                self.screen.blit(text, text_rect)
 
         if self.state == "UPGRADE":
             self.upgrade_left.draw(self.screen)
@@ -302,6 +317,16 @@ class Game:
                 if event.key == pg.K_f:
                     pg.display.toggle_fullscreen()
 
+                if event.key == pg.K_p:
+                    if self.state == "RUNNING" and self.started:
+                        self.state = "PAUSED"
+                        self.pause_sound.play()
+                        pg.mixer.music.set_volume(self.volume * 0.1)
+                    elif self.state == "PAUSED":
+                        self.state = "RUNNING"
+                        self.pause_sound.play()
+                        pg.mixer.music.set_volume(self.volume)
+
                 if self.state == "RUNNING" and not self.started:
                     if event.key == pg.K_SPACE:
                         self.started = True
@@ -329,7 +354,7 @@ class Game:
                 if self.state == "MENU":
                     self.menu.click(pos[0], pos[1])
 
-        if self.state == "GAMEOVER":
+        if self.state == "GAMEOVER" or self.state == "PAUSED":
             return
 
         pressed = pg.key.get_pressed()
@@ -813,6 +838,7 @@ class Game:
             self.state != "MENU"
             and self.state != "UPGRADE"
             and self.state != "GAMEOVER"
+            and self.state != "PAUSED"
         ):
             if self.car.skulls >= self.skulls_to_upgrade[0]:
                 left_type, right_type = random.sample(self.upgrade_types, 2)

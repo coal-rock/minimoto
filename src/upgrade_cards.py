@@ -96,7 +96,7 @@ class UICard:
 
         self.car.angle = 90
         self.timer += dt
-        if self.timer > 1.5:
+        if self.timer > 1:
             self.car.add_bullet(Vector2(1000, 150))
             self.timer = 0
 
