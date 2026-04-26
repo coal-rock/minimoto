@@ -97,7 +97,11 @@ class Game:
 
     def draw(self) -> None:
         if self.state == "RUNNING":
-            self.group.center(self.car.position)
+            if Vector2(self.group.view.center).distance_to(self.car.position) > 10:
+                lerped = Vector2(self.group.view.center).lerp(self.car.position, 0.1)
+                self.group.center(lerped)
+            else:
+                self.group.center(self.car.position)
 
         # redrawing here is a gross hack but like don't question it
         self.car.draw()

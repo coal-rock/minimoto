@@ -48,7 +48,7 @@ class ItemParticle(pg.sprite.Sprite):
 
 
 class ItemShadow(pg.sprite.Sprite):
-    def __init__(self, owner: "Skull", group: pg.sprite.Group):
+    def __init__(self, owner, group: pg.sprite.Group):
         super().__init__(group)
         self._layer = 1
         self.owner = owner
