@@ -1,9 +1,15 @@
+import sys
 import pygame as pg
 
 from pathlib import Path
 
-CURRENT_DIR = Path(__file__).parent.parent
-ASSETS_DIR = CURRENT_DIR / "assets"
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    # PyInstaller creates a temp folder and stores path in _MEIPASS
+    BASE_DIR = Path(sys._MEIPASS)
+else:
+    BASE_DIR = Path(__file__).parent.parent
+
+ASSETS_DIR = BASE_DIR / "assets"
 
 WIDTH = 36 * 16
 HEIGHT = 27 * 16
