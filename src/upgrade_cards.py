@@ -73,7 +73,6 @@ class UICard:
 
         self.car.angle = 90
         self.timer += dt
-        print(self.timer)
         if self.timer > 1:
             self.car.jump()
             self.timer = 0

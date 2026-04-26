@@ -1,5 +1,4 @@
 from upgrade_cards import UICard
-from turtle import pos
 
 import pygame as pg
 from pygame.math import Vector2
@@ -25,6 +24,7 @@ from menu import Menu
 from gas_can import GasCan
 from gas_arrow import GasArrow
 
+from user_events import MUSIC_END
 from game_ui import GameUI
 from floating_text import FloatingText
 
@@ -66,7 +66,7 @@ class Game:
     bullets: pg.sprite.Group[Bullet]
 
     volume: float = 0.3
-    skulls_to_upgrade = [1, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 10]
+    skulls_to_upgrade = [1, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90]
 
     def __init__(self, screen: pg.Surface) -> None:
         self.screen = screen
@@ -116,6 +116,7 @@ class Game:
 
         self.gas_arrow = GasArrow(self.car, self.group, self.gas_cans)
 
+        pg.mixer.music.set_endevent(MUSIC_END)
         pg.mixer.music.load("assets/music/1.wav")
         for i in range(2, 9):
             pg.mixer.music.queue(f"assets/music/{i}.wav")
@@ -223,6 +224,12 @@ class Game:
                 self.running = False
                 break
 
+            elif event.type == MUSIC_END:
+                pg.mixer.music.load("assets/music/1.wav")
+                for i in range(2, 9):
+                    pg.mixer.music.queue(f"assets/music/{i}.wav")
+                pg.mixer.music.play()
+
             elif event.type == pg.KEYDOWN:
                 if event.key == pg.K_ESCAPE:
                     if self.state == "GAMEOVER":
@@ -270,6 +277,7 @@ class Game:
                     self.upgrade_right.upgrade(self.car)
 
                 self.skulls_to_upgrade = self.skulls_to_upgrade[1:-1]
+                self.skulls_to_upgrade.append(self.skulls_to_upgrade[0] + 10)
                 self.state = "RUNNING"
 
         # IF STATE IS MENU (MAIN MENU)
