@@ -7,6 +7,8 @@ from helper import load_image
 CARD_W = 60
 CARD_H = 100
 
+CARD_COLOR = (245, 237, 207)
+
 class UpgradeCard:
     __hidden: bool = True
 
@@ -17,6 +19,8 @@ class UpgradeCard:
     __y: int
     __w: int = CARD_W
     __h: int = CARD_H
+
+    __card_rect: pg.Rect
 
     # Animation
     # External, card animation
@@ -38,6 +42,7 @@ class UpgradeCard:
     def __init__(self, view_port: pg.Surface, callback: Callable):
         self.__vp = view_port
         self.__callback = callback
+        self.__card_rect = pg.Rect(0, 0, CARD_W, CARD_H)
 
     def hide(self):
         self.__hidden = True
@@ -46,6 +51,9 @@ class UpgradeCard:
         self.__hidden = False
         self.__x = x or self.__x
         self.__y = y or self.__y
+
+        self.__card_rect.x = x
+        self.__card_rect.y = y
 
     def click_if(self, x: int, y:int):
         if self.__hidden:
@@ -62,10 +70,12 @@ class UpgradeCard:
 
 class JumpCard(UpgradeCard):
     __angled_car: pg.Surface = load_image("car/car008.png")
-    __car: Car = Car()
+    __i_offset_x: int = 20
+    __i_offset_y: int = 20
 
     def draw(self):
-        pass
+        pg.draw.rect(self.__vp, CARD_COLOR, self.__card_rect)
+        self.__vp.blit(self.__angled_car, (self.__x + self.__i_offset_x, self.__y + self.__i_offset_y))
 
     def update(self, dt: float):
         pass

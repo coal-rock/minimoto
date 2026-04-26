@@ -24,6 +24,7 @@ from menu import Menu
 from gas_can import GasCan
 
 from game_ui import GameUI
+from upgrade_ui import UpgradeUI
 
 DOUBLE_CLICK_TIME = 300
 HOLD_TIME = 0.15
@@ -33,6 +34,9 @@ WAVE_MIN_SIZE = 10
 WAVE_MAX_SIZE = 20
 
 WAVE_PROBS = [1, 1, 1]
+
+def throwaway():
+    print("TEST")
 
 
 class Game:
@@ -62,7 +66,7 @@ class Game:
     def __init__(self, screen: pg.Surface) -> None:
         self.screen = screen
         self.surface = pg.Surface((WIDTH, HEIGHT))
-        self.font = pg.font.Font()
+        self.font = pg.font.Font(get_dir("fonts/BoldPixels.ttf"))
 
         tmx_data = load_pygame(str(self.map_path))
 
@@ -104,6 +108,7 @@ class Game:
 
         self.menu = Menu(screen, self.state_set_running)
         self.game_ui = GameUI(screen)
+        self.upgrade_ui = UpgradeUI(screen, throwaway, throwaway, throwaway, throwaway)
 
         self.spawn_gas()
 
@@ -142,6 +147,7 @@ class Game:
                 self.car.health, 
                 self.car.gas, 
                 self.car.skulls)
+        self.upgrade_ui.draw()
 
     def handle_input(self, dt: float) -> None:
         for event in pg.event.get():
@@ -449,6 +455,7 @@ class Game:
         if self.car.health == 0:
             self.car.turning = "left"
         self.game_ui.update(dt, self.car.health, self.car.gas, self.car.skulls)
+        self.upgrade_ui.update(dt)
 
     def run(self):
         clock = pg.time.Clock()
@@ -456,7 +463,7 @@ class Game:
 
         try:
             while self.running:
-                dt = clock.tick(0) / 1000.0
+                dt = clock.tick(60) / 1000.0
                 self.fps = clock.get_fps()
                 self.handle_input(dt)
                 self.update(dt)

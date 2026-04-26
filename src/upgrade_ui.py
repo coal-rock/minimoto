@@ -15,6 +15,8 @@ CARD_1_Y = 10
 CARD_2_X = 10
 CARD_2_Y = 10
 
+def t():
+    pass
 
 class UpgradeUI:
     """
@@ -45,6 +47,12 @@ class UpgradeUI:
                  attack_speed_callback: Callable,
                  boost_duration_callback: Callable,
                  max_health_callback: Callable):
+
+        self.__jump_card = JumpCard(view_port, t)
+        self.__attack_speed_card = AttackSpeedCard(view_port, t)
+        self.__boost_duration_card = BoostDurationCard(view_port, t)
+        self.__max_health_card = MaxHealthCard(view_port, t)
+
         self.__options = [self.__jump_card, self.__attack_speed_card, self.__boost_duration_card, self.__max_health_card]
 
     def click(self, x: int, y: int):
@@ -54,13 +62,13 @@ class UpgradeUI:
         self.__max_health_card.click_if(x, y)
 
     def start_selection(self):
-        self.__jump_card.show()
+        self.__jump_card.show(CARD_1_X, CARD_2_Y)
 
 
     def draw(self):
         pass
 
-    def update(self):
+    def update(self, dt: float):
         pass
 
     def hide(self):
