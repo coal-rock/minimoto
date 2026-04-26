@@ -133,7 +133,11 @@ class Enemy(pg.sprite.Sprite):
                 diff = self.pos - car_pos_vec
 
                 if diff.length() > 0:
-                    self.velocity = diff.normalize() * self.knockback_strength
+                    self.velocity = (
+                        diff.normalize()
+                        * self.knockback_strength
+                        * self.car.knockback_strength
+                    )
 
                 self.col_car_pos = None
 

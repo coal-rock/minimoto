@@ -97,6 +97,7 @@ class Car(pg.sprite.Sprite):
     mask: pg.Mask
     # collision rect
     body: pg.Rect
+    knockback_strength = 0.9
 
     def __init__(
         self,
@@ -106,6 +107,8 @@ class Car(pg.sprite.Sprite):
         game: Game,
     ) -> None:
         super().__init__()
+        self.boost_scale = 1
+        self.jump_force = CAR_JUMP_FOCE
         self.game = game
         self._layer = 3
         self.car_max_speed = CAR_MAX_SPEED
@@ -149,6 +152,7 @@ class Car(pg.sprite.Sprite):
         self.old_z_pos = 0
         self.z_velocity = 0
         self.colliding = None
+        self.num_bullets = 1
 
         self.jump_sound = load_sound("sound/hop.mp3", 600)
         self.bump_sound = load_sound("sound/bump.mp3", 600)
@@ -159,6 +163,7 @@ class Car(pg.sprite.Sprite):
         self.explosion_sound = load_sound("sound/hit.wav", 1)
 
         self.drift_sound_channel = None
+        self.gas_drain_mult = 1
 
     def take_damage(self):
         if self.invuln_time > 0 or self.health <= 0:
@@ -251,7 +256,7 @@ class Car(pg.sprite.Sprite):
             return
 
         if self.z_pos >= 0:
-            self.z_velocity = CAR_JUMP_FOCE
+            self.z_velocity = self.jump_force
             self.jump_sound.play()
             self.game.shake_duration = 0
 
@@ -480,7 +485,8 @@ class Car(pg.sprite.Sprite):
         if self.health == 0 or self.gas <= 0:
             return
 
-        bullet_start = self.get_rotated_pos(Vector2(150, 150)) + Vector2(
+        # offset the bullet start pos so it comes out of the front of the car
+        bullet_start = self.get_rotated_pos(Vector2(150, 120)) + Vector2(
             self.rect.topleft
         )
 
@@ -650,9 +656,9 @@ class Car(pg.sprite.Sprite):
             return
 
         if self.is_drifting():
-            self.gas -= CAR_GAS_DRAIN * CAR_GAS_DRIFT_DRAIN * dt
+            self.gas -= CAR_GAS_DRAIN * CAR_GAS_DRIFT_DRAIN * self.gas_drain_mult * dt
         else:
-            self.gas -= CAR_GAS_DRAIN * dt
+            self.gas -= CAR_GAS_DRAIN * self.gas_drain_mult * dt
 
     def update_shot(self, dt: float) -> None:
         self.time_since_last_shot += dt

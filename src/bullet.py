@@ -10,7 +10,7 @@ BULLET_SPEED = 300
 class BulletTrail(pg.sprite.Sprite):
     def __init__(self, pos: Vector2, color: tuple[int, int, int]):
         super().__init__()
-        self._layer = 3
+        self._layer = 4
         self.pos = pos.copy()
         self.color = color
         self.radius = random.uniform(1.5, 3.0)
@@ -42,7 +42,7 @@ class Bullet(pg.sprite.Sprite):
 
     def __init__(self, pos: Vector2, target: Vector2, group: pg.sprite.Group):
         super().__init__()
-        self._layer = 10
+        self._layer = 5
         self.pos = pos.copy()
         self.group = group
 
@@ -102,7 +102,7 @@ class HitSpark(pg.sprite.Sprite):
         speed_dec: float = 0.3,
     ):
         super().__init__()
-        self._layer = 3
+        self._layer = 5
         self.pos = Vector2(pos)
         self.angle = angle
         self.speed = speed

@@ -73,7 +73,7 @@ class UICard:
 
         self.car.angle = 90
         self.timer += dt
-        if self.timer > 2.0:
+        if self.timer > 1.5:
             self.car.jump()
             self.timer = 0
 
@@ -114,7 +114,7 @@ class UICard:
         self.car.angle = 90
         self.timer += dt
 
-        if self.timer > 2.0:
+        if self.timer > 1.5:
             self.car.jump()
             self.timer = 0
 
@@ -184,6 +184,22 @@ class UICard:
         self.car.update(dt)
         self.car.position = Vector2(150, 150)
         self.car.rect.center = (150, 150)
+
+    def upgrade(self, car: Car):
+        if self.upgrade_type == "jump":
+            car.jump_force += 25
+        elif self.upgrade_type == "fire_rate":
+            car.shot_delay *= 0.9
+        elif self.upgrade_type == "health":
+            car.max_health += 1
+        elif self.upgrade_type == "knockback":
+            car.knockback_strength *= 1.1
+        elif self.upgrade_type == "projectiles":
+            car.num_bullets += 1
+        elif self.upgrade_type == "boost":
+            car.boost_scale *= 1.1
+        elif self.upgrade_type == "gas":
+            car.gas_drain_mult *= 0.9
 
     def update(self, dt: float):
         if self.state != "selected":

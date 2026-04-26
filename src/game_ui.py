@@ -7,16 +7,16 @@ from bones import BonesUI
 from helper import load_image
 
 HEARTS_IMAGE_PATH: str = "heart/ui.png"
-HEARTS_X: int = 20
-HEARTS_Y: int = 10
+HEARTS_X: int = 5
+HEARTS_Y: int = 5
 
 GAS_IMAGE_PATH: str = "gas_can/ui.png"
-GAS_X: int = 20
-GAS_Y: int = 50
+GAS_X: int = 5
+GAS_Y: int = 45
 
 BONES_IMAGE_PATH: str = "skull/ui.png"
-BONES_X: int = 20
-BONES_Y: int = 90
+BONES_X: int = 5
+BONES_Y: int = 85
 
 
 class GameUI:
@@ -29,17 +29,14 @@ class GameUI:
         self.gas = GasUI(vp, load_image(GAS_IMAGE_PATH), GAS_X, GAS_Y)
         self.bones = BonesUI(vp, load_image(BONES_IMAGE_PATH), BONES_X, BONES_Y)
 
-    def draw(self, hearts_amt: float, max_hearts_amt: int, gas_amt: float, bones_amt: int):
+    def draw(
+        self, hearts_amt: float, max_hearts_amt: int, gas_amt: float, bones_amt: int
+    ):
         self.hearts.draw(hearts_amt, max_hearts_amt)
         self.gas.draw(gas_amt)
         self.bones.draw(bones_amt)
 
-    def update(self, 
-               dt: float, 
-               hearts_amt: int, 
-               gas_amt: float, 
-               bones_amt:int
-               ):
+    def update(self, dt: float, hearts_amt: int, gas_amt: float, bones_amt: int):
         self.hearts.update(dt, hearts_amt)
         self.gas.update(dt, gas_amt)
         self.bones.update(dt, bones_amt)

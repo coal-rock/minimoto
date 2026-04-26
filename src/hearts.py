@@ -1,6 +1,7 @@
 from math import floor
 import pygame as pg
 
+
 class HeartsUI:
     __hidden: bool = True
 
@@ -10,17 +11,13 @@ class HeartsUI:
     __y: int
     __spacing_px: int = 30
 
-    def __init__(self, 
-                 veiw_port: pg.Surface, 
-                 surface: pg.Surface,
-                 x: int,
-                 y:int):
+    def __init__(self, veiw_port: pg.Surface, surface: pg.Surface, x: int, y: int):
         self.__vp = veiw_port
         self.__surface = surface
         self.__x = x
         self.__y = y
-        
-        # Create grey version for empty hearts
+
+        # grey version for empty hearts
         self.__grey_surface = surface.copy()
         for x_pos in range(self.__grey_surface.get_width()):
             for y_pos in range(self.__grey_surface.get_height()):
@@ -36,9 +33,7 @@ class HeartsUI:
 
         for i in range(0, max_amt):
             surf = self.__surface if i < _amt else self.__grey_surface
-            self.__vp.blit(
-                    surf, 
-                    (self.__x + (self.__spacing_px * i), self.__y))
+            self.__vp.blit(surf, (self.__x + (self.__spacing_px * i), self.__y))
 
     def update(self, dt: float, hearts_amt: int):
         if self.__hidden:
