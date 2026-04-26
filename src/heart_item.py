@@ -12,5 +12,5 @@ class Heart(Item):
         super().__init__(*args)
 
     def collect(self):
-        self.car.health = min(self.car.health + 30, 100)
+        self.car.health = min(self.car.health + 1, self.car.max_health)
         self.sound.play()

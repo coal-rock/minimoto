@@ -88,7 +88,7 @@ class ItemShadow(pg.sprite.Sprite):
 
 class Item(pg.sprite.Sprite):
     image: pg.Surface
-    _layer = 2
+    _layer = 3
     time: float = 0
     rect: pg.Rect
     car: Car

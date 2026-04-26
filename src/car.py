@@ -1,4 +1,4 @@
-from bullet import Bullet
+from bullet import Bullet, HitSpark
 from pygame.locals import SRCALPHA
 import pygame as pg
 from pygame.math import Vector2
@@ -13,10 +13,12 @@ from helper import *
 from spark import Spark
 from trail import Trail
 from cloud import Cloud
+from explosion_puff import FirePuff
 
 CAR_MAX_SPEED = 400
 CAR_ACCEL_SPEED = 300
 CAR_DECCEL_SPEED = 450
+CAR_DECCEL_NO_GAS = 100
 CAR_LANDING_DECCEL_SPEED = 5000
 
 CAR_INITIAL_TURN_SPEED = 600
@@ -105,13 +107,20 @@ class Car(pg.sprite.Sprite):
     ) -> None:
         super().__init__()
         self.game = game
-        self._layer = 2
+        self._layer = 3
         self.car_max_speed = CAR_MAX_SPEED
         self.bullets_group = bullets_group
 
         self.frames = []
+        self.burnt_frames = []
+
         for i in range(0, 48):
             self.frames.append(load_image(f"car/car{i:03}.png").convert_alpha())
+
+        for i in range(0, 8):
+            self.burnt_frames.append(
+                load_image(f"burnt_car/burnt{i}.png").convert_alpha()
+            )
 
         self.image = pg.Surface((300, 300), pg.SRCALPHA)
         self.rect = self.image.get_rect()
@@ -136,6 +145,7 @@ class Car(pg.sprite.Sprite):
         self.screen = screen
         self.world_sparks = []
         self.z_pos = 0
+        self.time_since_last_fire_puff = 0.0
         self.old_z_pos = 0
         self.z_velocity = 0
         self.colliding = None
@@ -146,19 +156,100 @@ class Car(pg.sprite.Sprite):
         self.boost_sound = load_sound("sound/boost.mp3", 1)
         self.land_sound = load_sound("sound/land.mp3", 1)
         self.shoot_sound = load_sound("sound/shoot.wav", 1)
+        self.explosion_sound = load_sound("sound/hit.wav", 1)
 
         self.drift_sound_channel = None
 
     def take_damage(self):
-        if self.invuln_time > 0:
+        if self.invuln_time > 0 or self.health <= 0:
             return
         self.health -= 1
+        if self.health <= 0:
+            self.health = 0
+            self.explode()
+
         self.invuln_time = 1.5
         self.game.shake_duration = 0.5
         self.game.shake_intensity = 5
         self.bump_sound.play()
 
+    def explode(self):
+        self.explosion_sound.set_volume(1.0)
+        self.explosion_sound.play()
+        self.end_drift(False)
+
+        fire_colors = [
+            (255, 255, 255),
+            (255, 255, 0),
+            (255, 128, 0),
+            (255, 0, 0),
+            (50, 50, 50),
+        ]
+        smoke_colors = [(100, 100, 100), (50, 50, 50), (20, 20, 20)]
+
+        for _ in range(60):
+            offset = Vector2(random.uniform(-20, 20), random.uniform(-40, 40)).rotate(
+                -self.display_angle
+            )
+
+            pos = self.position + offset
+
+            vel = (
+                offset.normalize() * random.uniform(50, 150)
+                if offset.length() > 0
+                else Vector2(random.uniform(-50, 50), random.uniform(-50, 50))
+            )
+
+            radius = random.uniform(5, 10)
+            life = random.uniform(0.4, 0.8)
+
+            colors = fire_colors if random.random() > 0.3 else smoke_colors
+
+            puff = FirePuff(pos, vel, radius, colors, life)
+            self.game.group.add(puff)
+
+        for _ in range(15):
+            offset = Vector2(random.uniform(-15, 15), random.uniform(-30, 30)).rotate(
+                -self.display_angle
+            )
+            pos = self.position + offset
+            vel = Vector2(random.uniform(-20, 20), random.uniform(-40, -10))
+
+            radius = random.uniform(5, 15)
+            life = random.uniform(1.0, 2.0)
+
+            puff = FirePuff(pos, vel, radius, smoke_colors, life)
+            self.game.group.add(puff)
+
+    def emit_fire(self):
+        fire_colors = [
+            (255, 255, 255),
+            (255, 255, 0),
+            (255, 128, 0),
+            (255, 0, 0),
+            (50, 50, 50),
+        ]
+        smoke_colors = [(100, 100, 100), (50, 50, 50), (20, 20, 20)]
+
+        # Emit fire
+        offset = Vector2(random.uniform(-10, 10), random.uniform(-20, 20)).rotate(
+            -self.display_angle
+        )
+        pos = self.position + offset
+        vel = Vector2(random.uniform(-20, 20), random.uniform(-40, -10)).rotate(
+            -self.display_angle
+        )
+        radius = random.uniform(3, 8)
+        life = random.uniform(0.3, 0.6)
+
+        colors = fire_colors if random.random() > 0.2 else smoke_colors
+        puff = FirePuff(pos, vel, radius, colors, life)
+        self.game.group.add(puff)
+
     def jump(self):
+        if self.health == 0 or self.gas <= 0:
+            return
+
         if self.z_pos >= 0:
             self.z_velocity = CAR_JUMP_FOCE
             self.jump_sound.play()
@@ -245,7 +336,10 @@ class Car(pg.sprite.Sprite):
         return rotated_rect, rotated_surface
 
     def get_angle_rot_locked(self) -> float:
-        return ((round((self.display_angle % 360) / 7.5)) % 48) * 7.5
+        if self.health != 0:
+            return ((round((self.display_angle % 360) / 7.5)) % 48) * 7.5
+        else:
+            return ((round((self.display_angle % 360) / 45)) % 8) * 45
 
     def handle_collision(
         self,
@@ -375,9 +469,16 @@ class Car(pg.sprite.Sprite):
         draw_pos = (100, 100 - self.z_pos)
 
         # hack
-        self.image.blit(self.frames[self.frame_num], draw_pos)
+        if self.health != 0:
+            self.image.blit(self.frames[self.frame_num], draw_pos)
+        else:
+            self.frame_num = (round((self.display_angle % 360) / 45) + 6) % 8
+            self.image.blit(self.burnt_frames[self.frame_num], draw_pos)
 
     def add_bullet(self, target: Vector2) -> None:
+        if self.health == 0 or self.gas <= 0:
+            return
+
         bullet_start = self.get_rotated_pos(Vector2(150, 150)) + Vector2(
             self.rect.topleft
         )
@@ -522,7 +623,7 @@ class Car(pg.sprite.Sprite):
 
     # am i currently touching the ground
     def is_grounded(self) -> bool:
-        return self._layer == 2 and self.z_pos == 0
+        return self._layer == 3 and self.z_pos == 0
 
     # am i currently touching a raised object
     def is_landed(self) -> bool:
@@ -553,12 +654,19 @@ class Car(pg.sprite.Sprite):
     def update(self, dt: float) -> None:
         self.time += dt
 
-        if self.gas < 0:
-            self.accelerating = False
-
         deccel_speed = (
             CAR_DECCEL_SPEED * 0.8 if self.post_drift_time != 0 else CAR_DECCEL_SPEED
         )
+
+        if self.gas <= 0 or self.health <= 0:
+            self.accelerating = False
+            deccel_speed = CAR_DECCEL_NO_GAS
+
+        if self.health <= 0:
+            self.time_since_last_fire_puff += dt
+            if self.time_since_last_fire_puff > 0.05:
+                self.time_since_last_fire_puff = 0
+                self.emit_fire()
 
         # accel
         if self.accelerating and not self.over_obstacle():
@@ -644,14 +752,17 @@ class Car(pg.sprite.Sprite):
             self.emit_sparks(True)
 
         # holy shit make this a function ffs
-        self.frame_num = (round((self.display_angle % 360) / 7.5) + 36) % 48
+        if self.health != 0:
+            self.frame_num = (round((self.display_angle % 360) / 7.5) + 36) % 48
+        else:
+            self.frame_num = (round((self.display_angle % 360) / 45) + 6) % 8
 
         # evil hack so we are like above shit when we jump
         if self.z_pos > 0:
             self.group.change_layer(self, 4)
         # if we aren't colliding, we should stay on top of the obstacle
         elif not self.colliding:
-            self.group.change_layer(self, 2)
+            self.group.change_layer(self, 3)
 
         if self.is_drifting():
             self.emit_sparks()

@@ -44,7 +44,7 @@ class Enemy(pg.sprite.Sprite):
     ):
         super().__init__()
         # self.death_sound = load_sound("sound/zombie.mp3", 1)
-        self._layer = 2
+        self._layer = 3
         self.frames = []
         self.group = group
         for frame in self.raw_frames:
