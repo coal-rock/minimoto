@@ -679,7 +679,7 @@ class Car(pg.sprite.Sprite):
         return self.mask.scale((1500, 1500))
 
     def update_gas(self, dt: float) -> None:
-        if self.game.state != "RUNNING":
+        if self.game.state != "RUNNING" or not self.game.started:
             return
 
         if self.is_drifting():

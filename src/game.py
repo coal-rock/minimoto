@@ -44,6 +44,7 @@ class Game:
     running: bool = True
     fps: float = 0
     state: Literal["MENU", "RUNNING", "UPGRADE", "GAMEOVER"]
+    started: bool = False
 
     shake_duration: float = 0
     shake_intensity: float = 0
@@ -59,6 +60,7 @@ class Game:
     car: Car
     bullets_to_shoot: int = 0
 
+    space_held_time: float = 0.0
     space_bar_press_tmr: float = 0.0
     space_bar_press_tmr_target: float = 1.5
 
@@ -130,6 +132,7 @@ class Game:
         self.menu = Menu(screen, self.state_set_running)
         self.game_ui = GameUI(screen)
         self.state = "MENU"
+        self.started = False
 
         # # Create vignette
         # self.vignette = pg.Surface((WIDTH, HEIGHT), pg.SRCALPHA)
@@ -192,6 +195,44 @@ class Game:
             self.car.health, self.car.max_health, self.car.gas, self.car.skulls
         )
 
+        if self.state == "RUNNING" and not self.started:
+            prompts = [
+                "PRESS SPACE TO START",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "PRESS SPACE TO HOP",
+                "HOLD SPACE BEFORE LANDING TO INITIATE A DRIFT",
+                "RELEASE SPACE TO DRIFT OUT",
+                "TAP SPACE TO BOOST OUT OF DRIFT",
+            ]
+            blink = (pg.time.get_ticks() // 600) % 2 == 0
+            for i, line in enumerate(prompts):
+                if not line:
+                    continue
+                if i == 0 and not blink:
+                    continue
+                text = self.font.render(line, True, (255, 255, 255))
+                shadow = self.font.render(line, True, (0, 0, 0))
+                text_rect = text.get_rect(
+                    center=(WIDTH // 2, HEIGHT // 2 - 200 + (i * 20))
+                )
+                self.screen.blit(shadow, (text_rect.x + 2, text_rect.y + 2))
+                self.screen.blit(text, text_rect)
+
         if self.state == "UPGRADE" or self.state == "GAMEOVER":
             overlay = pg.Surface(self.screen.get_size(), pg.SRCALPHA)
             overlay.fill((0, 0, 0, 150))
@@ -217,9 +258,7 @@ class Game:
             sub_text = self.font.render(
                 f"SCORE: {self.car.skulls}", True, (255, 255, 255)
             )
-            sub_shadow = self.font.render(
-                f"SCORE: {self.car.skulls}", True, (0, 0, 0)
-            )
+            sub_shadow = self.font.render(f"SCORE: {self.car.skulls}", True, (0, 0, 0))
             sub_rect = sub_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
             self.screen.blit(sub_shadow, (sub_rect.x + 2, sub_rect.y + 2))
             self.screen.blit(sub_text, sub_rect)
@@ -248,6 +287,11 @@ class Game:
                 pg.mixer.music.play()
 
             elif event.type == pg.KEYDOWN:
+                if self.state == "RUNNING" and not self.started:
+                    if event.key == pg.K_SPACE:
+                        self.started = True
+                        self.game_ui.show()
+
                 if event.key == pg.K_ESCAPE:
                     if self.state == "GAMEOVER":
                         self.state_set_menu()
@@ -328,6 +372,11 @@ class Game:
             self.car.turning = "drift_in"
             return
 
+        if not self.started:
+            self.car.accelerating = True
+            self.car.turning = "drift_in"
+            return
+
         if just_released[pg.K_0]:
             self.car.take_damage()
 
@@ -370,12 +419,14 @@ class Game:
 
     def state_set_running(self):
         self.state = "RUNNING"
+        self.started = False
         print("GAME STATE: RUNNING")
         self.menu.hide()
-        self.game_ui.show()
+        self.game_ui.hide()
 
     def state_set_menu(self):
         self.state = "MENU"
+        self.started = False
         print("GAME STATE: MENU")
         self.game_ui.hide()
         self.menu.show()
@@ -407,6 +458,7 @@ class Game:
 
         self.state_set_menu()
         self.spawn_gas()
+        self.started = False
         print("GAME RESTARTED")
 
     def spawn_wave(self):
@@ -509,8 +561,6 @@ class Game:
             self.freeze_time -= dt
             return
 
-        self.car.accelerating = True
-
         if self.state == "RUNNING" or self.state == "MENU" or self.state == "GAMEOVER":
             self.group.update(dt)
 
@@ -530,7 +580,8 @@ class Game:
             self.upgrade_right.update(dt)
 
         if self.state == "RUNNING":
-            self.game_time += dt
+            if self.started:
+                self.game_time += dt
 
             # Death conditions
             is_dead = False
@@ -553,11 +604,12 @@ class Game:
                 self.volume = new_vol
                 pg.mixer.music.set_volume(self.volume)
 
-            self.time_to_next_wave -= dt
+            if self.started:
+                self.time_to_next_wave -= dt
 
-            if self.time_to_next_wave < 0:
-                self.spawn_wave()
-                self.time_to_next_wave = WAVE_INTERVAL_SECS
+                if self.time_to_next_wave < 0:
+                    self.spawn_wave()
+                    self.time_to_next_wave = WAVE_INTERVAL_SECS
 
             # if self.car
 
