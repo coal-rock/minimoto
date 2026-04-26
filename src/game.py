@@ -49,7 +49,7 @@ class Game:
     shake_intensity: float = 0
     freeze_time: float = 0
 
-    time_to_next_wave = WAVE_INTERVAL_SECS
+    time_to_next_wave = 3
     death_timer: float = 0
     game_time: float = 0
     wave_count: int = 0
