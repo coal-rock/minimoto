@@ -19,16 +19,25 @@ class HeartsUI:
         self.__surface = surface
         self.__x = x
         self.__y = y
+        
+        # Create grey version for empty hearts
+        self.__grey_surface = surface.copy()
+        for x_pos in range(self.__grey_surface.get_width()):
+            for y_pos in range(self.__grey_surface.get_height()):
+                r, g, b, a = self.__grey_surface.get_at((x_pos, y_pos))
+                grey = int(0.299 * r + 0.587 * g + 0.114 * b)
+                self.__grey_surface.set_at((x_pos, y_pos), (grey, grey, grey, a))
 
-    def draw(self, amt: float):
+    def draw(self, amt: float, max_amt: int = 3):
         if self.__hidden:
             return
 
         _amt: int = floor(amt)
 
-        for i in range(0, _amt):
+        for i in range(0, max_amt):
+            surf = self.__surface if i < _amt else self.__grey_surface
             self.__vp.blit(
-                    self.__surface, 
+                    surf, 
                     (self.__x + (self.__spacing_px * i), self.__y))
 
     def update(self, dt: float, hearts_amt: int):
@@ -40,5 +49,3 @@ class HeartsUI:
 
     def show(self):
         self.__hidden = False
-
-

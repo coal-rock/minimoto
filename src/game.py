@@ -145,6 +145,7 @@ class Game:
         self.menu.draw()
         self.game_ui.draw(
                 self.car.health, 
+                self.car.max_health,
                 self.car.gas, 
                 self.car.skulls)
         self.upgrade_ui.draw()

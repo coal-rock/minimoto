@@ -29,8 +29,8 @@ class GameUI:
         self.gas = GasUI(vp, load_image(GAS_IMAGE_PATH), GAS_X, GAS_Y)
         self.bones = BonesUI(vp, load_image(BONES_IMAGE_PATH), BONES_X, BONES_Y)
 
-    def draw(self, hearts_amt: float, gas_amt: float, bones_amt: int):
-        self.hearts.draw(hearts_amt)
+    def draw(self, hearts_amt: float, max_hearts_amt: int, gas_amt: float, bones_amt: int):
+        self.hearts.draw(hearts_amt, max_hearts_amt)
         self.gas.draw(gas_amt)
         self.bones.draw(bones_amt)
 
