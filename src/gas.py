@@ -18,9 +18,12 @@ class GasUI:
 
     __main_rect: pg.Rect
     __shadow_rect: pg.Rect
+    __outline_rect: pg.Rect
+    __outline_rect_border_thickness: int = 1
 
     __main_color: tuple[int, int, int] = (200, 25, 25)
     __shadow_color: tuple[int, int, int] = (120, 20, 20)
+    __outline_color: tuple[int, int, int] = (0, 0, 0)
 
     def __init__(self, 
                  veiw_port: pg.Surface, 
@@ -33,6 +36,12 @@ class GasUI:
         self.__y = y
 
         self.__main_rect = pg.Rect(
+                self.__x + self.__bar_offset_x, 
+                self.__y + self.__bar_offset_y, 
+                self.__max_w_px, 
+                self.__max_h_px)
+
+        self.__outline_rect = pg.Rect(
                 self.__x + self.__bar_offset_x, 
                 self.__y + self.__bar_offset_y, 
                 self.__max_w_px, 
@@ -51,6 +60,7 @@ class GasUI:
         self.__vp.blit(self.__surface, (self.__x, self.__y))
         pg.draw.rect(self.__vp, self.__main_color, self.__main_rect)
         pg.draw.rect(self.__vp, self.__shadow_color, self.__shadow_rect)
+        pg.draw.rect(self.__vp, self.__outline_color, self.__outline_rect, self.__outline_rect_border_thickness)
 
     def update(self, dt: float, gas: float):
         if self.__hidden:
