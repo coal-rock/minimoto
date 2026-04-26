@@ -414,8 +414,8 @@ class Game:
 
         difficulty = min(1.0, self.game_time / 100.0)
 
-        min_size = int(3 + (difficulty * 12))
-        max_size = int(6 + (difficulty * 24))
+        min_size = int(6 + (difficulty * 12))
+        max_size = int(12 + (difficulty * 24))
 
         probs = [
             1.0,  # Small
