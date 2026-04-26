@@ -59,7 +59,7 @@ class Game:
     def __init__(self, screen: pg.Surface) -> None:
         self.screen = screen
         self.surface = pg.Surface((WIDTH, HEIGHT))
-        self.font = pg.font.Font()
+        self.font = pg.font.Font(get_dir("fonts/BoldPixels.ttf"))
 
         tmx_data = load_pygame(str(self.map_path))
 
