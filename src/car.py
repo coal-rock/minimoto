@@ -142,6 +142,8 @@ class Car(pg.sprite.Sprite):
         self.bump_sound = load_sound("sound/bump.mp3", 600)
         self.drift_sound = load_sound("sound/drift.mp3", 10)
         self.boost_sound = load_sound("sound/boost.mp3", 1)
+        self.land_sound = load_sound("sound/land.mp3", 1)
+
         self.drift_sound_channel = None
 
     def jump(self):
@@ -628,6 +630,7 @@ class Car(pg.sprite.Sprite):
             self.emit_sparks()
 
         if self.did_just_land():
+            self.land_sound.play()
             self.add_cloud()
 
         self.update_shot(dt)

@@ -54,6 +54,8 @@ class Game:
     enemies: pg.sprite.Group[Enemy]
     bullets: pg.sprite.Group[Bullet]
 
+    volume: float = 0.3
+
     def __init__(self, screen: pg.Surface) -> None:
         self.screen = screen
         self.surface = pg.Surface((WIDTH, HEIGHT))
@@ -86,14 +88,16 @@ class Game:
         self.enemies = pg.sprite.Group()
         self.bullets = pg.sprite.Group()
         self.car = Car(self.group, self.screen, self.bullets, self)
-        self.car.position = Vector2(415, 265)
+        self.car.position = Vector2(101 * 16, 68.7 * 16)
         self.group.add(self.car)
+        self.group.center(self.car.position + Vector2(-160, 0))
 
         pg.mixer.music.load("assets/music/1.wav")
         for i in range(2, 9):
             pg.mixer.music.queue(f"assets/music/{i}.wav")
 
-        # pg.mixer.music.play()
+        pg.mixer.music.set_volume(self.volume)
+        pg.mixer.music.play()
 
         self.menu = Menu(screen, self.state_set_running)
         self.game_ui = GameUI(screen)
@@ -260,10 +264,9 @@ class Game:
         pass
 
     def update(self, dt: float) -> None:
+
         self.car.accelerating = True
         self.group.update(dt)
-
-        print(self.shake_duration)
 
         if self.shake_duration > 0:
             self.shake_duration -= dt
@@ -277,6 +280,11 @@ class Game:
             self.menu.update(dt)
 
         if self.state == "RUNNING":
+            new_vol = pg.math.lerp(self.volume, 0.1, 0.01)
+            if new_vol != self.volume:
+                self.volume = new_vol
+                pg.mixer.music.set_volume(self.volume)
+
             self.time_to_next_wave -= dt
 
             if self.time_to_next_wave < 0:
