@@ -248,6 +248,8 @@ class Game:
                 self.spawn_wave()
                 self.time_to_next_wave = WAVE_INTERVAL_SECS
 
+            # if self.car
+
             car_collision_detected = False
 
             for wall in self.walls:
