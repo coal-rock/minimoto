@@ -144,15 +144,9 @@ class Game:
         # self.screen.blit(text, (0, 0))
 
         self.menu.draw()
-<<<<<<< Updated upstream
         self.game_ui.draw(
-                self.car.health, 
-                self.car.max_health,
-                self.car.gas, 
-                self.car.skulls)
-=======
-        self.game_ui.draw(self.car.health, self.car.max_health, self.car.gas, self.car.skulls)
->>>>>>> Stashed changes
+            self.car.health, self.car.max_health, self.car.gas, self.car.skulls
+        )
         self.upgrade_ui.draw()
 
     def handle_input(self, dt: float) -> None:
