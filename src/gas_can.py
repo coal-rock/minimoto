@@ -8,5 +8,8 @@ class GasCan(Item):
     item_lerp_speed = 0
     min_speed = 0
 
+    def __init__(self, *args):
+        super().__init__(*args)
+
     def collect(self):
         self.car.gas = 100

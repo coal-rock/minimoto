@@ -1,3 +1,5 @@
+from turtle import pos
+
 import pygame as pg
 from pygame.math import Vector2
 import pyscroll
@@ -19,6 +21,7 @@ from mid_zombie import MidZombie
 from big_zombie import BigZombie
 from bullet import Bullet, HitSpark
 from menu import Menu
+from gas_can import GasCan
 
 from game_ui import GameUI
 
@@ -59,7 +62,7 @@ class Game:
     def __init__(self, screen: pg.Surface) -> None:
         self.screen = screen
         self.surface = pg.Surface((WIDTH, HEIGHT))
-        self.font = pg.font.Font(get_dir("fonts/BoldPixels.ttf"))
+        self.font = pg.font.Font()
 
         tmx_data = load_pygame(str(self.map_path))
 
@@ -102,7 +105,7 @@ class Game:
         self.menu = Menu(screen, self.state_set_running)
         self.game_ui = GameUI(screen)
 
-        self.hit_sound = load_sound("sound/hit.wav", 1)
+        self.spawn_gas()
 
     def draw(self) -> None:
         if self.state == "RUNNING":
@@ -132,10 +135,13 @@ class Game:
             (255, 255, 255),
         )
 
-        self.screen.blit(text, (400, 0))
+        self.screen.blit(text, (0, 0))
 
         self.menu.draw()
-        self.game_ui.draw(self.car.health, self.car.gas, self.car.skulls)
+        self.game_ui.draw(
+                self.car.health, 
+                self.car.gas, 
+                self.car.skulls)
 
     def handle_input(self, dt: float) -> None:
         for event in pg.event.get():
@@ -268,6 +274,11 @@ class Game:
                 self.enemies.add(enemy)
         pass
 
+    def spawn_gas(self):
+        pos = self.car.position + Vector2(250, 0)
+        GasCan(pos, self.car, self.group)
+
+
     def update(self, dt: float) -> None:
 
         self.car.accelerating = True
@@ -343,9 +354,7 @@ class Game:
 
             self.car.colliding = car_collision_detected
             if car_collision_detected:
-                self.car.handle_collision(
-                    dt, car_collision_detected, car_collision_point
-                )
+                self.car.handle_collision(dt, car_collision_detected, car_collision_point)
 
             # if (
             #     self.car.did_just_land()
@@ -433,8 +442,6 @@ class Game:
                                     speed_dec=0.8,
                                 )
                             )
-
-                        self.hit_sound.play()
                         enemy.kill()
 
         # self.menu.update(dt)
