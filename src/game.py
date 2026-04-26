@@ -445,6 +445,9 @@ class Game:
                         enemy.kill()
 
         # self.menu.update(dt)
+        # maybe remove?
+        if self.car.health == 0:
+            self.car.turning = "left"
         self.game_ui.update(dt, self.car.health, self.car.gas, self.car.skulls)
 
     def run(self):
@@ -453,7 +456,7 @@ class Game:
 
         try:
             while self.running:
-                dt = clock.tick(60) / 1000.0
+                dt = clock.tick(0) / 1000.0
                 self.fps = clock.get_fps()
                 self.handle_input(dt)
                 self.update(dt)

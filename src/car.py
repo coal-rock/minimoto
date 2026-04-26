@@ -636,9 +636,11 @@ class Car(pg.sprite.Sprite):
     def did_just_land(self):
         return self.z_pos == 0 and self.old_z_pos != 0
 
+    @lru_cache(maxsize=128)
     def get_landing_mask(self) -> pg.mask.Mask:
         return self.mask.scale((600, 600))
 
+    @lru_cache(maxsize=128)
     def get_landing_mask_aoe(self) -> pg.mask.Mask:
         return self.mask.scale((1500, 1500))
 
