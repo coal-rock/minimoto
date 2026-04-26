@@ -23,6 +23,7 @@ The following asset packs were used:
 - https://szadiart.itch.io/postapo-lands-set1 (DEMO)
 - https://toffeecraft.itch.io/forest-nature-pack
 - https://minzinn.itch.io/pixelvehicles
+- https://yukipixels.itch.io/boldpixels
 
 The following open source libraries were used:
 - PygameCE
