@@ -201,19 +201,33 @@ class Game:
             self.upgrade_left.draw(self.screen)
             self.upgrade_right.draw(self.screen)
 
+            text = self.font.render("HOLD SPACE TO SELECT", True, (255, 255, 255))
+            shadow = self.font.render("HOLD SPACE TO SELECT", True, (0, 0, 0))
+            text_rect = text.get_rect(center=(WIDTH // 2, 65))
+            self.screen.blit(shadow, (text_rect.x + 2, text_rect.y + 2))
+            self.screen.blit(text, text_rect)
+
         if self.state == "GAMEOVER":
             text = self.font.render("GAME OVER", True, (255, 50, 50))
+            shadow = self.font.render("GAME OVER", True, (0, 0, 0))
             text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 20))
+            self.screen.blit(shadow, (text_rect.x + 2, text_rect.y + 2))
             self.screen.blit(text, text_rect)
 
             sub_text = self.font.render(
                 f"SCORE: {self.car.skulls}", True, (255, 255, 255)
             )
+            sub_shadow = self.font.render(
+                f"SCORE: {self.car.skulls}", True, (0, 0, 0)
+            )
             sub_rect = sub_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+            self.screen.blit(sub_shadow, (sub_rect.x + 2, sub_rect.y + 2))
             self.screen.blit(sub_text, sub_rect)
 
             sub_text = self.font.render("PRESS R TO RESTART", True, (255, 255, 255))
+            sub_shadow = self.font.render("PRESS R TO RESTART", True, (0, 0, 0))
             sub_rect = sub_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 35))
+            self.screen.blit(sub_shadow, (sub_rect.x + 2, sub_rect.y + 2))
             self.screen.blit(sub_text, sub_rect)
 
     def handle_input(self, dt: float) -> None:
@@ -269,8 +283,9 @@ class Game:
                 if self.upgrade_left.state == "selected":
                     self.upgrade_left.scale_card(1.0 + (self.space_bar_press_tmr / 160))
                 elif self.upgrade_right.state == "selected":
-                    self.upgrade_right.scale_card(1.0 + (self.space_bar_press_tmr / 160))
-
+                    self.upgrade_right.scale_card(
+                        1.0 + (self.space_bar_press_tmr / 160)
+                    )
 
             if self.space_bar_press_tmr >= self.space_bar_press_tmr_target:
                 if self.upgrade_left.state == "selected":

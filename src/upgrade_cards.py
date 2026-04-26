@@ -317,9 +317,11 @@ class UICard:
         surface.set_clip(old_clip)
 
         self.text_surface = self.font.render(self.text, True, (255, 255, 255))
+        self.shadow_surface = self.font.render(self.text, True, (0, 0, 0))
 
         text_pos = (
             card_pos[0] + (image.get_width() / 2) - (self.text_surface.get_width() / 2),
             card_pos[1] + image.get_height() - 44,
         )
+        surface.blit(self.shadow_surface, (text_pos[0] + 2, text_pos[1] + 2))
         surface.blit(self.text_surface, text_pos)
