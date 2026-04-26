@@ -94,10 +94,12 @@ class Item(pg.sprite.Sprite):
     car: Car
     item_lerp_speed = 0.05
     min_speed = None
+    glow_color = (0, 0, 0)
 
     def __init__(self, pos: Vector2, car: Car, group: pg.sprite.Group):
         super().__init__(group)
         self.image = self.image.convert_alpha()
+        self.original_image = self.image.convert_alpha()
         self.rect = self.image.get_rect(center=pos)
         self.pos = pos.copy()
         self.original_pos = pos.copy()
@@ -113,8 +115,12 @@ class Item(pg.sprite.Sprite):
         self.time += dt
 
         glow_val = (math.sin(self.time * 3) + 1) * 0.5
-        tint_surf = get_skull_surface().copy()
-        tint = (int(40 * glow_val), int(100 * glow_val), int(100 * glow_val))
+        tint_surf = self.original_image.copy()
+        tint = (
+            int(self.glow_color[0] * glow_val),
+            int(self.glow_color[1] * glow_val),
+            int(self.glow_color[2] * glow_val),
+        )
         tint_surf.fill((*tint, 50), special_flags=pg.BLEND_RGB_ADD)
         self.image = tint_surf
 

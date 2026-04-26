@@ -1,3 +1,4 @@
+from heart_item import Heart
 from skull import Skull
 from pyscroll.group import PyscrollGroup
 from typing import Literal
@@ -11,7 +12,8 @@ from car import Car
 
 
 class Enemy(pg.sprite.Sprite):
-    drop_rate = 0.1
+    heart_drop_rate = 0.02
+    skull_drop_rate = 0.1
     image: pg.Surface
     rect: pg.Rect
     mask: pg.Mask
@@ -91,8 +93,10 @@ class Enemy(pg.sprite.Sprite):
         self.col_car_pos = car_pos
 
     def kill(self):
-        if random.random() < self.drop_rate:
+        if random.random() < self.skull_drop_rate:
             Skull(self.pos, self.car, self.group)
+        elif random.random() < self.heart_drop_rate:
+            Heart(self.pos, self.car, self.group)
 
         super().kill()
 
