@@ -46,9 +46,12 @@ OFFSET = Vector2(100, 100)
 
 
 class Car(pg.sprite.Sprite):
-    health: float = 100
+    health: int = 3
+    max_health: int = 3
+
     gas: float = 100
     skulls: int = 0
+    invuln_time: float = 0
 
     shot_delay: float = CAR_SHOT_TIME
     time_since_last_shot: float = 0
@@ -632,6 +635,9 @@ class Car(pg.sprite.Sprite):
         if self.did_just_land():
             self.land_sound.play()
             self.add_cloud()
+
+        self.invuln_time -= dt
+        self.invuln_time = max(0, self.invuln_time)
 
         self.update_shot(dt)
         self.update_gas(dt)
