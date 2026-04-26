@@ -11,6 +11,7 @@ from pytmx import load_pygame
 from typing import Literal
 import random
 import math
+import time
 
 from helper import *
 
@@ -79,6 +80,12 @@ class Game:
         self.font = pg.font.Font(get_dir("fonts/BoldPixels.ttf"))
 
         self.game_over_sound = load_sound("sound/game_over.mp3", 1)
+        self.game_start_sound = load_sound("sound/game_start.wav", 1)
+        self.upgrade_charge_sound = load_sound("sound/upgrade.mp3", 1.0)
+        self.upgrade_charge_channel = None
+
+        self.space_held_time = 0.0
+        self.space_bar_press_tmr_target = self.upgrade_charge_sound.get_length()
 
         self.upgrade_left = UICard("selected", "left")
         self.upgrade_right = UICard("unselected", "right")
@@ -287,9 +294,15 @@ class Game:
                 pg.mixer.music.play()
 
             elif event.type == pg.KEYDOWN:
+                if event.key == pg.K_s:
+                    timestamp = int(time.time())
+                    pg.image.save(self.screen, f"screenshot_{timestamp}.png")
+                    print(f"Screenshot saved as screenshot_{timestamp}.png")
+
                 if self.state == "RUNNING" and not self.started:
                     if event.key == pg.K_SPACE:
                         self.started = True
+                        self.game_start_sound.play()
                         self.game_ui.show()
 
                 if event.key == pg.K_ESCAPE:
@@ -322,16 +335,26 @@ class Game:
         current_time = pg.time.get_ticks()
 
         if self.state == "UPGRADE":
+            if just_pressed[pg.K_SPACE]:
+                self.upgrade_charge_sound.set_volume(1.0)
+                self.upgrade_charge_channel = self.upgrade_charge_sound.play()
+
             if pressed[pg.K_SPACE]:
                 self.space_bar_press_tmr += dt
+                progress = min(
+                    1.0, self.space_bar_press_tmr / self.space_bar_press_tmr_target
+                )
+
                 if self.upgrade_left.state == "selected":
-                    self.upgrade_left.scale_card(1.0 + (self.space_bar_press_tmr / 160))
+                    self.upgrade_left.set_progress(progress)
                 elif self.upgrade_right.state == "selected":
-                    self.upgrade_right.scale_card(
-                        1.0 + (self.space_bar_press_tmr / 160)
-                    )
+                    self.upgrade_right.set_progress(progress)
 
             if self.space_bar_press_tmr >= self.space_bar_press_tmr_target:
+                if getattr(self, "upgrade_charge_channel", None):
+                    self.upgrade_charge_channel.stop()
+                    self.upgrade_charge_channel = None
+
                 if self.upgrade_left.state == "selected":
                     self.upgrade_left.upgrade(self.car)
                 elif self.upgrade_right.state == "selected":
@@ -342,26 +365,31 @@ class Game:
                 self.skulls_to_upgrade = self.skulls_to_upgrade[1:-1]
                 self.skulls_to_upgrade.append(self.skulls_to_upgrade[0] + 10)
                 self.state = "RUNNING"
+                self.game_ui.show()
+                pg.mixer.unpause()
+                pg.mixer.music.set_volume(self.volume)
+                return
 
             if just_released[pg.K_SPACE]:
+                if getattr(self, "upgrade_charge_channel", None):
+                    self.upgrade_charge_channel.stop()
+                    self.upgrade_charge_channel = None
+
+                held_time = self.space_bar_press_tmr
                 self.space_bar_press_tmr = 0.0
+                
                 if self.upgrade_left.state == "selected":
-                    self.upgrade_left.reset_scale()
+                    self.upgrade_left.reset_progress()
                 elif self.upgrade_right.state == "selected":
-                    self.upgrade_right.reset_scale()
-                if self.space_bar_press_tmr >= 0.2:
-                    return
-
-            if just_released[pg.K_SPACE]:
-                if self.upgrade_left.state == "selected":
-                    self.upgrade_left.state = "unselected"
-                    self.upgrade_left.reset_scale()
-                    self.upgrade_right.state = "selected"
-
-                elif self.upgrade_right.state == "selected":
-                    self.upgrade_left.state = "selected"
-                    self.upgrade_right.reset_scale()
-                    self.upgrade_right.state = "unselected"
+                    self.upgrade_right.reset_progress()
+                
+                if held_time < 0.2:
+                    if self.upgrade_left.state == "selected":
+                        self.upgrade_left.state = "unselected"
+                        self.upgrade_right.state = "selected"
+                    elif self.upgrade_right.state == "selected":
+                        self.upgrade_left.state = "selected"
+                        self.upgrade_right.state = "unselected"
 
             return
 
@@ -453,7 +481,7 @@ class Game:
         self.time_to_next_wave = WAVE_INTERVAL_SECS
         self.bullets_to_shoot = 0
 
-        self.volume = 0.3
+        self.volume = 0.5
         pg.mixer.music.set_volume(self.volume)
 
         self.state_set_menu()
@@ -786,6 +814,9 @@ class Game:
                 self.upgrade_left = UICard("selected", "left", left_type)
                 self.upgrade_right = UICard("unselected", "right", right_type)
                 self.state = "UPGRADE"
+                self.game_ui.hide()
+                pg.mixer.pause()
+                pg.mixer.music.set_volume(self.volume * 0.3)
             else:
                 self.state = "RUNNING"
 

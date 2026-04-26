@@ -176,7 +176,7 @@ class Enemy(pg.sprite.Sprite):
                 self.col_car_pos = None
 
             desired_move = target_velocity + (separation_vec * 50)
-            self.velocity = self.velocity.lerp(desired_move, 10.0 * dt)
+            self.velocity = self.velocity.lerp(desired_move, max(0, min(10.0 * dt, 1)))
 
             match self.col_side:
                 case "left":

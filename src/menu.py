@@ -30,6 +30,7 @@ class Menu:
 
     def __init__(self, screen: pg.Surface, start_onclick: Callable):
         self.__screen = screen
+        self.menu_select_sound = load_sound("sound/menu_select.wav", 1)
 
         self.__logo_ui = FloatingLogoUI(self.__screen)
 
@@ -100,6 +101,11 @@ class Menu:
 
     def click(self, x: int, y: int):
         if not self.__hidden:
+            if (self.__start_btn.in_bounds(x, y) or 
+                self.__settings_btn.in_bounds(x, y) or 
+                self.__exit_btn.in_bounds(x, y)):
+                self.menu_select_sound.play()
+
             self.__start_btn.click_if(x, y)
             self.__settings_btn.click_if(x, y)
             self.__exit_btn.click_if(x, y)

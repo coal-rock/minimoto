@@ -28,7 +28,7 @@ class GasArrow(pg.sprite.Sprite):
         self.alpha = 0
 
     def update(self, dt):
-        if self.car.game.state != "RUNNING":
+        if self.car.game.state != "RUNNING" or not getattr(self.car.game, "started", False):
             self.image = pg.Surface((0, 0), pg.SRCALPHA)
             return
 
