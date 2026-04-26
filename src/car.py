@@ -46,7 +46,7 @@ CAR_SHOT_TIME = 1
 OFFSET = Vector2(100, 100)
 
 
-class car.gas.Car(pg.sprite.Sprite):
+class Car(pg.sprite.Sprite):
     health: int = 5
     max_health: int = 5
 
