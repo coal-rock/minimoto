@@ -3,6 +3,7 @@ import pygame as pg
 from helper import *
 from math import floor
 
+
 class FloatingLogoUI:
     __logo: pg.Surface
     __vp: pg.Surface
@@ -48,7 +49,7 @@ class FloatingLogoUI:
             return
 
         if abs(self.__offset) == self.__bounds:
-            self.__direction = not self.__direction 
+            self.__direction = not self.__direction
 
         if self.__direction:
             self.__y += self.__rate

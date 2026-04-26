@@ -97,7 +97,7 @@ class Game:
         self.car = Car(self.group, self.screen, self.bullets, self)
         self.car.position = Vector2(101 * 16, 68.7 * 16)
         self.group.add(self.car)
-        self.group.center(self.car.position + Vector2(-160, 0))
+        self.group.center(self.car.position + Vector2(-140, -40))
 
         pg.mixer.music.load("assets/music/1.wav")
         for i in range(2, 9):

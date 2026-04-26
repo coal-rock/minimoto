@@ -645,6 +645,9 @@ class Car(pg.sprite.Sprite):
         return self.mask.scale((1500, 1500))
 
     def update_gas(self, dt: float) -> None:
+        if self.game.state != "RUNNING":
+            return
+
         if self.is_drifting():
             self.gas -= CAR_GAS_DRAIN * CAR_GAS_DRIFT_DRAIN * dt
         else:
