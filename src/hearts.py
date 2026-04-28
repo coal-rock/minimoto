@@ -18,7 +18,7 @@ class HeartsUI:
         self.__surface = surface
         self.__x = x
         self.__y = y
-        self.__scales = [1.0] * 10  # support up to 10 hearts
+        self.__scales = [1.0] * 100  # support up to 100 hearts
         self.__last_amt = 0
 
         # grey version for empty hearts

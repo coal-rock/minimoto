@@ -76,12 +76,13 @@ class Game:
     bullets: pg.sprite.Group[Bullet]
 
     volume: float = 0.3
-    skulls_to_upgrade = [1, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90]
+    next_upgrade_threshold: int = 1
 
     def __init__(self, screen: pg.Surface) -> None:
         self.screen = screen
         self.surface = pg.Surface((WIDTH, HEIGHT))
         self.font = pg.font.Font(get_dir("fonts/BoldPixels.ttf"))
+        self.next_upgrade_threshold = 1
 
         self.game_over_sound = load_sound("sound/game_over.mp3", 1)
         self.game_start_sound = load_sound("sound/game_start.wav", 1)
@@ -103,24 +104,21 @@ class Game:
         self.frame_count = 0
         self.map_height = 1000000
 
-        # We keep map_layer for camera handling but point it to dummy data
-        # or just use its size. Pyscroll needs it.
         tmx_data = load_pygame(str(self.map_path))
         self.map_layer = pyscroll.BufferedRenderer(
             data=pyscroll.data.TiledMapData(tmx_data),
             size=self.screen.get_size(),
-            clamp_camera=False,  # Allow moving anywhere
+            clamp_camera=False,
         )
 
         self.map_layer.zoom = 1
         self.group = PyscrollGroup(map_layer=self.map_layer, default_layer=1)
         self.fps = 0
 
-        # Initialize grass
         self.grass_manager = grass.GrassManager(
             get_dir("grass"),
             tile_size=16,
-            stiffness=20,  # Increased from 5 for better performance (returns to cache faster)
+            stiffness=20,
             max_unique=15,
             place_range=[0, 1],
         )
@@ -129,7 +127,6 @@ class Game:
         )
         self.generated_grass_tiles = set()
 
-        # Load the dirt floor pattern from dirt.tmx
         dirt_tmx = load_pygame(str(ASSETS_DIR / "tiled" / "dirt.tmx"))
         self.floor_tile = pg.Surface(
             (dirt_tmx.width * dirt_tmx.tilewidth, dirt_tmx.height * dirt_tmx.tileheight)
@@ -244,13 +241,12 @@ class Game:
             )
             i += 1
 
-        t = pg.time.get_ticks() / 1000.0
-        self.grass_manager.update_render(
-            self.screen,
-            self.last_dt,
-            offset=(view_offset_x, view_offset_y),
-            rot_function=lambda x, y: int(math.sin(t + x / 100) * 15),
-        )
+        # self.grass_manager.update_render(
+        #     self.screen,
+        #     self.last_dt,
+        #     offset=(view_offset_x, view_offset_y),
+        #     rot_function=None,
+        # )
 
         while i < len(visible_sprites):
             sprite = visible_sprites[i]
@@ -275,7 +271,12 @@ class Game:
             self.menu.draw()
 
         self.game_ui.draw(
-            self.car.health, self.car.max_health, self.car.gas, self.car.skulls
+            self.car.health,
+            self.car.max_health,
+            self.car.gas,
+            self.car.skulls,
+            int(self.fps),
+            len(self.enemies),
         )
 
         if self.state == "RUNNING" and not self.started:
@@ -477,8 +478,8 @@ class Game:
 
                 self.space_bar_press_tmr = 0.0
 
-                self.skulls_to_upgrade = self.skulls_to_upgrade[1:-1]
-                self.skulls_to_upgrade.append(self.skulls_to_upgrade[0] + 10)
+                # Exponential scaling: roughly 1.4x + 5
+                self.next_upgrade_threshold = int(self.next_upgrade_threshold * 1.4) + 5
                 self.state = "RUNNING"
                 self.game_ui.show()
                 pg.mixer.unpause()
@@ -589,7 +590,6 @@ class Game:
                     else:
                         self.car.start_drift(direction)
 
-            # Neutral handling: if we are drifting and neither key is pressed for that drift's direction
             if self.car.is_drifting():
                 drift_key = pg.K_LEFT if self.car.turn_dir == -1 else pg.K_RIGHT
                 drift_opposite = pg.K_RIGHT if self.car.turn_dir == -1 else pg.K_LEFT
@@ -646,7 +646,7 @@ class Game:
 
         self.gas_arrow = GasArrow(self.car, self.group, self.gas_cans)
 
-        self.skulls_to_upgrade = [1, 5, 10, 20, 30, 40, 50]
+        self.next_upgrade_threshold = 1
         self.death_timer = 0
         self.game_time = 0
         self.wave_count = 0
@@ -664,7 +664,7 @@ class Game:
     def spawn_wave(self):
         self.wave_count += 1
 
-        difficulty = min(1.0, self.game_time / 100.0)
+        difficulty = min(1.0, self.game_time / 100.0) * 100
 
         min_size = int(6 + (difficulty * 12))
         max_size = int(12 + (difficulty * 24))
@@ -762,63 +762,61 @@ class Game:
             self.freeze_time -= dt
             return
 
-        # Pre-calculate viewport for optimization
         view_rect = pg.Rect(self.group.view)
-        # Expanded view for updates (zombies just outside screen should still move)
         update_rect = view_rect.inflate(WIDTH, HEIGHT)
 
         if self.state == "MENU":
             pass
 
         if self.state == "RUNNING" or self.state == "MENU" or self.state == "GAMEOVER":
-            # Update spatial grid for enemies once per frame
             Enemy.update_grid(self.enemies)
 
             self.group.update(dt)
 
             # Infinite Grass Generation around the car (optimized to run every 10 frames)
-            if self.frame_count % 10 == 0:
-                car_tile_x = int(self.car.position.x // 16)
-                car_tile_y = int(self.car.position.y // 16)
-
-                # radius around player to ensure grass is generated ahead
-                # reduced from 35 to 25 to reduce frame spikes
-                radius = 25
-                for ty in range(car_tile_y - radius, car_tile_y + radius):
-                    for tx in range(car_tile_x - radius, car_tile_x + radius):
-                        if (tx, ty) not in self.generated_grass_tiles:
-                            density = random.randint(8, 16)
-                            self.grass_manager.place_tile(
-                                (tx, ty), density, [0, 1, 2, 3, 4, 5]
-                            )
-                            self.generated_grass_tiles.add((tx, ty))
+            # if self.frame_count % 10 == 0:
+            #     car_tile_x = int(self.car.position.x // 16)
+            #     car_tile_y = int(self.car.position.y // 16)
+            #
+            #     # radius around player to ensure grass is generated ahead
+            #     # reduced from 35 to 25 to reduce frame spikes
+            #     radius = 25
+            #     for ty in range(car_tile_y - radius, car_tile_y + radius):
+            #         for tx in range(car_tile_x - radius, car_tile_x + radius):
+            #             if (tx, ty) not in self.generated_grass_tiles:
+            #                 density = random.randint(8, 16)
+            #                 self.grass_manager.place_tile(
+            #                     (tx, ty), density, [0, 1, 2, 3, 4, 5]
+            #                 )
+            #                 self.generated_grass_tiles.add((tx, ty))
 
             self.frame_count += 1
 
-            if self.car.z_pos == 0:
-                mask_offset = (self.car.rect.x, self.car.rect.y)
-                self.grass_manager.apply_mask_force(self.car.mask, mask_offset)
-
-                dist = self.car.position.distance_to(self.car.old_position)
-                # Increased threshold and step for intermediate force application
-                if dist > 20:
-                    num_steps = int(dist / 20)
-                    for i in range(1, num_steps):
-                        lerp_pos = self.car.old_position.lerp(
-                            self.car.position, i / num_steps
-                        )
-                        # Center of mask
-                        mask_tl = (lerp_pos.x - 150, lerp_pos.y - 150)
-                        self.grass_manager.apply_mask_force(self.car.mask, mask_tl)
-
-            cell_x = int(self.car.position.x // Enemy.grid_cell_size)
-            cell_y = int(self.car.position.y // Enemy.grid_cell_size)
-            for dx in range(-2, 3):
-                for dy in range(-2, 3):
-                    cell = (cell_x + dx, cell_y + dy)
-                    if cell in Enemy.grid:
-                        for enemy in Enemy.grid[cell]:
-                            self.grass_manager.apply_force(enemy.pos, 10, 20)
+            # Grass interaction disabled for now
+            # if self.car.z_pos == 0:
+            #     mask_offset = (self.car.rect.x, self.car.rect.y)
+            #     self.grass_manager.apply_mask_force(self.car.mask, mask_offset)
+            #
+            #     dist = self.car.position.distance_to(self.car.old_position)
+            #     # Increased threshold and step for intermediate force application
+            #     if dist > 20:
+            #         num_steps = int(dist / 20)
+            #         for i in range(1, num_steps):
+            #             lerp_pos = self.car.old_position.lerp(
+            #                 self.car.position, i / num_steps
+            #             )
+            #             # Center of mask
+            #             mask_tl = (lerp_pos.x - 150, lerp_pos.y - 150)
+            #             self.grass_manager.apply_mask_force(self.car.mask, mask_tl)
+            #
+            # cell_x = int(self.car.position.x // Enemy.grid_cell_size)
+            # cell_y = int(self.car.position.y // Enemy.grid_cell_size)
+            # for dx in range(-2, 3):
+            #     for dy in range(-2, 3):
+            #         cell = (cell_x + dx, cell_y + dy)
+            #         if cell in Enemy.grid:
+            #             for enemy in Enemy.grid[cell]:
+            #                 self.grass_manager.apply_force(enemy.pos, 10, 20)
 
         if self.shake_duration > 0:
             self.shake_duration -= dt
@@ -873,6 +871,8 @@ class Game:
             landing_shift = 150  # (600 - 300) / 2
             landing_aoe_shift = 600  # (1500 - 300) / 2
 
+            cell_x = int(self.car.position.x // Enemy.grid_cell_size)
+            cell_y = int(self.car.position.y // Enemy.grid_cell_size)
             check_cells = 4  # landing aoe
             for dx in range(-check_cells, check_cells + 1):
                 for dy in range(-check_cells, check_cells + 1):
@@ -988,7 +988,7 @@ class Game:
             and self.state != "GAMEOVER"
             and self.state != "PAUSED"
         ):
-            if self.car.skulls >= self.skulls_to_upgrade[0]:
+            if self.car.skulls >= self.next_upgrade_threshold:
                 left_type, right_type = random.sample(self.upgrade_types, 2)
                 self.upgrade_left = UICard("selected", "left", left_type)
                 self.upgrade_right = UICard("unselected", "right", right_type)

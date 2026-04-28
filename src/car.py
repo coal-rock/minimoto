@@ -48,8 +48,8 @@ OFFSET = Vector2(100, 100)
 
 
 class Car(pg.sprite.Sprite):
-    health: int = 5
-    max_health: int = 5
+    health: int = 50
+    max_health: int = 50
 
     gas: float = 100
     skulls: int = 0
