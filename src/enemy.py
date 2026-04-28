@@ -21,7 +21,12 @@ class Enemy(pg.sprite.Sprite):
     mask: pg.Mask
     group: PyscrollGroup
 
+    _asset_cache = {}
+
     frames: list[pg.Surface]
+    white_frames: list[pg.Surface]
+    masks: list[pg.Mask]
+
     time: float
     frame_num: int
     car: Car
@@ -39,6 +44,22 @@ class Enemy(pg.sprite.Sprite):
     health: int = 1
     hit_flash_time: float = 0
 
+    # Spatial partitioning grid
+    grid = {}
+    grid_cell_size = 64
+
+    @classmethod
+    def update_grid(cls, enemies):
+        cls.grid.clear()
+        for enemy in enemies:
+            cell = (
+                int(enemy.pos.x // cls.grid_cell_size),
+                int(enemy.pos.y // cls.grid_cell_size),
+            )
+            if cell not in cls.grid:
+                cls.grid[cell] = []
+            cls.grid[cell].append(enemy)
+
     def __init__(
         self,
         pos: Vector2,
@@ -49,25 +70,36 @@ class Enemy(pg.sprite.Sprite):
         super().__init__()
         # self.death_sound = load_sound("sound/zombie.mp3", 1)
         self._layer = 3
-        self.frames = []
         self.group = group
-        for frame in self.raw_frames:
-            f = frame.convert_alpha()
-            w, h = f.get_size()
-            # add space for shadow twin
-            surf = pg.Surface((w + 8, h + 4), pg.SRCALPHA)
-            # shadow
-            shadow_color = (0, 0, 0, 80)
-            shadow_rect = pg.Rect(0, 0, w * 0.7, 6)
-            shadow_rect.centerx = (w + 8) // 2
-            shadow_rect.bottom = h + 3
-            pg.draw.ellipse(surf, shadow_color, shadow_rect)
-            # she bl on my i until i t
-            surf.blit(f, (4, 0))
-            self.frames.append(surf)
+
+        cache_key = id(self.raw_frames)
+        if cache_key not in self._asset_cache:
+            processed_frames = []
+            white_frames = []
+            masks = []
+            for frame in self.raw_frames:
+                f = frame.convert_alpha()
+                w, h = f.get_size()
+                # add space for shadow twin
+                surf = pg.Surface((w + 8, h + 4), pg.SRCALPHA)
+                # shadow
+                shadow_color = (0, 0, 0, 80)
+                shadow_rect = pg.Rect(0, 0, w * 0.7, 6)
+                shadow_rect.centerx = (w + 8) // 2
+                shadow_rect.bottom = h + 3
+                pg.draw.ellipse(surf, shadow_color, shadow_rect)
+                # she bl on my i until i t
+                surf.blit(f, (4, 0))
+                processed_frames.append(surf)
+                white_frames.append(get_white_surface(surf))
+                masks.append(pg.mask.from_surface(surf))
+            self._asset_cache[cache_key] = (processed_frames, white_frames, masks)
+
+        self.frames, self.white_frames, self.masks = self._asset_cache[cache_key]
 
         self.frame_num = 0
         self.image = self.frames[self.frame_num]
+        self.mask = self.masks[self.frame_num]
 
         self.pos = Vector2(pos)
         self.velocity = Vector2(0, 0)
@@ -80,7 +112,6 @@ class Enemy(pg.sprite.Sprite):
         self.radius = 16
         self.col_side: Literal["top", "left", "right", "bottom", None] = None
         self.col_car_pos = None
-        self.mask = pg.mask.from_surface(self.image)
 
     def handle_collision(
         self, col_side: Literal["top", "left", "right", "bottom"], dt: float
@@ -104,20 +135,21 @@ class Enemy(pg.sprite.Sprite):
         hit_sound = load_sound("sound/hit.wav", 0.5)
         hit_sound.play()
 
-        for _ in range(10, 20):
-            spark_pos = Vector2(self.rect.center) + Vector2(
-                random.uniform(-5, 5), random.uniform(-5, 5)
-            )
-            self.group.add(
-                HitSpark(
-                    spark_pos,
-                    math.radians(random.randint(0, 360)),
-                    random.randint(1, 5),
-                    (200, 20, 20),
-                    scale=0.1,
-                    speed_dec=0.8,
+        if Vector2(self.rect.center).distance_to(self.car.position) < 400:
+            for _ in range(5, 10):
+                spark_pos = Vector2(self.rect.center) + Vector2(
+                    random.uniform(-5, 5), random.uniform(-5, 5)
                 )
-            )
+                self.group.add(
+                    HitSpark(
+                        spark_pos,
+                        math.radians(random.randint(0, 360)),
+                        random.randint(1, 5),
+                        (200, 20, 20),
+                        scale=0.1,
+                        speed_dec=0.8,
+                    )
+                )
 
         if self.health <= 0:
             self.kill()
@@ -133,42 +165,53 @@ class Enemy(pg.sprite.Sprite):
         super().kill()
 
     def update(self, dt: float):
-        # TODO maybe don't normalize before dealing with collision
         self.time += dt
         self.frame_num = round((self.time * 7)) % 2
-        self.image = self.frames[self.frame_num + self.frame_offset]
+        idx = self.frame_num + self.frame_offset
 
         if self.hit_flash_time > 0:
             self.hit_flash_time -= dt
-            self.image = get_white_surface(self.image)
+            self.image = self.white_frames[idx]
+        else:
+            self.image = self.frames[idx]
 
-        self.mask = pg.mask.from_surface(self.image)
+        self.mask = self.masks[idx]
 
-        target = Vector2(self.car.rect.center)
-        current = Vector2(self.rect.center)
+        target_pos = self.car.position
 
-        if current != target:
-            direction = (target - current).normalize()
+        diff_to_target = target_pos - self.pos
+        dist_sq = diff_to_target.length_squared()
+
+        if dist_sq > 1:
+            direction = diff_to_target / math.sqrt(dist_sq)
             target_velocity = direction * self.speed
 
-            nearby_enemies = pg.sprite.spritecollide(
-                self, self.enemies, False, pg.sprite.collide_circle
-            )
-
             separation_vec = Vector2(0, 0)
-            for other in nearby_enemies:
-                if other is not self:
-                    diff = self.pos - other.pos
-                    if diff.length() > 0:
-                        separation_vec += diff.normalize() * (40 / diff.length())
+            if dist_sq < 250000:  # 500^2
+                cell_x = int(self.pos.x // self.grid_cell_size)
+                cell_y = int(self.pos.y // self.grid_cell_size)
+
+                for dx in range(-1, 2):
+                    for dy in range(-1, 2):
+                        cell = (cell_x + dx, cell_y + dy)
+                        if cell in self.grid:
+                            for other in self.grid[cell]:
+                                if other is not self:
+                                    diff = self.pos - other.pos
+                                    d_sq = diff.length_squared()
+                                    if 0 < d_sq < 1024:  # 32^2
+                                        d = math.sqrt(d_sq)
+                                        separation_vec += diff / d * (40 / d)
 
             if self.col_car_pos is not None:
                 car_pos_vec = Vector2(self.col_car_pos)
                 diff = self.pos - car_pos_vec
+                d_sq = diff.length_squared()
 
-                if diff.length() > 0:
+                if d_sq > 0:
                     self.velocity = (
-                        diff.normalize()
+                        diff
+                        / math.sqrt(d_sq)
                         * self.knockback_strength
                         * self.car.knockback_strength
                     )
@@ -181,13 +224,10 @@ class Enemy(pg.sprite.Sprite):
             match self.col_side:
                 case "left":
                     self.velocity.x = max(1, self.velocity.x)
-
                 case "right":
                     self.velocity.x = min(-1, self.velocity.x)
-
                 case "top":
                     self.velocity.y = max(1, self.velocity.y)
-
                 case "bottom":
                     self.velocity.y = min(-1, self.velocity.y)
 
@@ -196,7 +236,8 @@ class Enemy(pg.sprite.Sprite):
             else:
                 self.frame_offset = 2
 
-            self.old_pos = self.pos.copy()
+            self.old_pos.x = self.pos.x
+            self.old_pos.y = self.pos.y
             self.pos += self.velocity * dt
             self.rect.center = self.pos
 

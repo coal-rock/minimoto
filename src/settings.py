@@ -5,9 +5,12 @@ class Setting:
     Contains:
         - Sound
     """
+
     instance = None
 
     __sound: float = 0.0
+    __vehicle: str = "car"
+    __color: str = "default"
 
     def __new__(cls):
         if cls.instance is None:
@@ -15,7 +18,21 @@ class Setting:
         return cls.instance
 
     def __init__(self):
-        self.__sound = 1.0
+        if not hasattr(self, "_initialized"):
+            self.__sound = 1.0
+            self.__vehicle = "car"
+            self.__color = "default"
+            self._initialized = True
+
+    def set_vehicle(self, vehicle: str, color: str):
+        self.__vehicle = vehicle
+        self.__color = color
+
+    def get_vehicle(self) -> str:
+        return self.__vehicle
+
+    def get_color(self) -> str:
+        return self.__color
 
     def change_sound(self, amt: float) -> float:
         """
@@ -31,5 +48,3 @@ class Setting:
         Get level of sound (0.0, 1.0)
         """
         return self.__sound
-
-

@@ -4,16 +4,17 @@ from typing import Callable
 from button import Button
 from floating_logo_ui import FloatingLogoUI
 from helper import *
+from vehicle_selector import VehicleSelector
 
-START_BTN_LOC = (40, 150)
+START_BTN_LOC = (60, 150)
 START_BTN_IMAGE_PATH = "buttons/start.png"
 START_BTN_HOVER_IMAGE_PATH = "buttons/start_highlighted.png"
 
-SETTINGS_BTN_LOC = (20, 260)
+SETTINGS_BTN_LOC = (40, 260)
 SETTINGS_BTN_IMAGE_PATH = "buttons/settings.png"
 SETTINGS_BTN_HOVER_IMAGE_PATH = "buttons/settings_highlighted.png"
 
-EXIT_BTN_LOC = (85, 350)
+EXIT_BTN_LOC = (105, 350)
 EXIT_BTN_IMAGE_PATH = "buttons/exit.png"
 EXIT_BTN_HOVER_IMAGE_PATH = "buttons/exit_highlighted.png"
 
@@ -24,15 +25,17 @@ class Menu:
     __start_btn: Button
     __settings_btn: Button
     __exit_btn: Button
+    __vehicle_selector: VehicleSelector
 
     __hidden: bool = False
     __logo_ui: FloatingLogoUI
 
-    def __init__(self, screen: pg.Surface, start_onclick: Callable):
+    def __init__(self, screen: pg.Surface, car, start_onclick: Callable):
         self.__screen = screen
         self.menu_select_sound = load_sound("sound/menu_select.wav", 1)
 
         self.__logo_ui = FloatingLogoUI(self.__screen)
+        self.__vehicle_selector = VehicleSelector(self.__screen, 300, 180, car)
 
         self.__start_btn = Button(
             START_BTN_LOC[0],
@@ -74,6 +77,9 @@ class Menu:
 
         self.mask = load_image("menu_mask.png").convert_alpha()
 
+    def set_car(self, car):
+        self.__vehicle_selector.car = car
+
     def settings_btn_onclick(self):
         pass
 
@@ -91,6 +97,7 @@ class Menu:
         self.__settings_btn.hide()
         self.__exit_btn.hide()
         self.__logo_ui.hide()
+        self.__vehicle_selector.hidden = True
 
     def show(self):
         self.__hidden = False
@@ -98,12 +105,16 @@ class Menu:
         self.__settings_btn.show()
         self.__exit_btn.show()
         self.__logo_ui.show()
+        self.__vehicle_selector.hidden = False
 
     def click(self, x: int, y: int):
         if not self.__hidden:
-            if (self.__start_btn.in_bounds(x, y) or 
-                self.__settings_btn.in_bounds(x, y) or 
-                self.__exit_btn.in_bounds(x, y)):
+            if (
+                self.__start_btn.in_bounds(x, y)
+                or self.__settings_btn.in_bounds(x, y)
+                or self.__exit_btn.in_bounds(x, y)
+                or self.__vehicle_selector.click(x, y)
+            ):
                 self.menu_select_sound.play()
 
             self.__start_btn.click_if(x, y)
@@ -123,3 +134,4 @@ class Menu:
         self.__settings_btn.draw()
         self.__exit_btn.draw()
         self.__logo_ui.draw()
+        self.__vehicle_selector.draw()

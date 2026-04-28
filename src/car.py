@@ -14,6 +14,7 @@ from spark import Spark
 from trail import Trail
 from cloud import Cloud
 from explosion_puff import FirePuff
+from settings import Setting
 
 CAR_MAX_SPEED = 340
 CAR_ACCEL_SPEED = 300
@@ -73,7 +74,8 @@ class Car(pg.sprite.Sprite):
 
     # using strings here is prob dumb but i honestly
     # can't be fucked to use a proper enum
-    turning: Literal["left", "drift_in", "drift_out", None]
+    turning: Literal["left", "right", "drift_in", "drift_out", "drift_neutral", None]
+    turn_dir: int  # 1 for right, -1 for left
     frames: list[pg.Surface]
     frame_num: int
     accelerating: bool
@@ -107,7 +109,7 @@ class Car(pg.sprite.Sprite):
         group: PyscrollGroup,
         screen: pg.Surface,
         bullets_group: pg.sprite.Group,
-        game: Game,
+        game,
     ) -> None:
         super().__init__()
         self.boost_scale = 1
@@ -120,13 +122,24 @@ class Car(pg.sprite.Sprite):
         self.frames = []
         self.burnt_frames = []
 
+        settings = Setting()
+        vehicle = settings.get_vehicle().lower()
+        color = settings.get_color().lower()
+
         for i in range(0, 48):
-            self.frames.append(load_image(f"car/car{i:03}.png").convert_alpha())
+            self.frames.append(
+                load_image(f"vehicles/{vehicle}/{color}/{i:03}.png").convert_alpha()
+            )
 
         for i in range(0, 8):
-            self.burnt_frames.append(
-                load_image(f"burnt_car/burnt{i}.png").convert_alpha()
-            )
+            if (ASSETS_DIR / f"vehicles/{vehicle}/burnt/{i}.png").exists():
+                self.burnt_frames.append(
+                    load_image(f"vehicles/{vehicle}/burnt/{i}.png").convert_alpha()
+                )
+            else:
+                self.burnt_frames.append(
+                    load_image(f"vehicles/car/burnt/{i}.png").convert_alpha()
+                )
 
         self.image = pg.Surface((300, 300), pg.SRCALPHA)
         self.rect = self.image.get_rect()
@@ -138,6 +151,7 @@ class Car(pg.sprite.Sprite):
         self.direction = Vector2(0, -1)
         self.angle = 0
         self.display_angle = 0
+        self.turn_dir = -1
         self.speed = 0
         self.turn_speed = 0
         self.accelerating = False
@@ -159,7 +173,7 @@ class Car(pg.sprite.Sprite):
 
         self.jump_sound = load_sound("sound/hop.mp3", 0.5)
         self.bump_sound = load_sound("sound/bump.mp3", 0.6)
-        self.drift_sound = load_sound("sound/drift.mp3", 0.1)
+        self.drift_sound = load_sound("sound/drift.mp3", 0.09)
         self.boost_sound = load_sound("sound/boost.mp3", 1)
         self.land_sound = load_sound("sound/land.mp3", 0.5)
         self.shoot_sound = load_sound("sound/shoot.wav", 0.2)
@@ -364,8 +378,6 @@ class Car(pg.sprite.Sprite):
         self.position = Vector2(self.old_position)
 
         if collision_point:
-            # Nudge away from the collision point to prevent sticking
-            # collision_point is relative to the car's 300x300 surface
             center = Vector2(150, 150)
             diff = center - Vector2(collision_point)
             if diff.length() > 0:
@@ -506,6 +518,12 @@ class Car(pg.sprite.Sprite):
             self.frame_num = (round((self.display_angle % 360) / 45) + 6) % 8
             self.image.blit(self.burnt_frames[self.frame_num], draw_pos)
 
+        # draw hitbox
+        # if hasattr(self, "mask"):
+        #     test = self.mask.to_surface().convert_alpha()
+        #     test.set_colorkey((0, 0, 0))
+        #     self.image.blit(test)
+
     def add_bullet(self, target: Vector2) -> None:
         if self.health == 0 or self.gas <= 0:
             return
@@ -546,13 +564,10 @@ class Car(pg.sprite.Sprite):
             self.group.add(Cloud(l_back))
             self.group.add(Cloud(r_back))
 
-    def start_drift(self):
+    def start_drift(self, direction: int = -1):
         self.time_spent_drifting = 0
         self.turning = "drift_in"
-
-        # UNFUCK PLEASE
-        self.drift_sound_channel = self.drift_sound.play(-1)
-        self.drift_sound.set_volume(0.1)
+        self.turn_dir = direction
 
         if self.post_drift_time != 0:
             print("drift combo")
@@ -563,45 +578,56 @@ class Car(pg.sprite.Sprite):
     def start_drift_in(self):
         self.turning = "drift_in"
 
+    def start_drift_neutral(self):
+        self.turning = "drift_neutral"
+
     def end_drift(self, give_boost: bool = True):
         self.turning = None
-
-        if self.drift_sound_channel is not None:
-            self.drift_sound_channel.stop()
 
         self.angle = self.display_angle
         self.visual_offset = 0
         self.velocity_dir = Vector2(0, -1).rotate(self.angle)
 
         if self.speed > CAR_SPEED_DRIFT_THRESHOLD and give_boost:
-            self.boost_sound.play()
-
             if self.time_spent_drifting > CAR_DRIFT_BOOST_TIME[2]:
+                self.boost_sound.play()
                 self.speed += CAR_DRIFT_BOOST[2]
                 self.post_drift_time = CAR_DRIFT_POST_TIME[2]
                 self.game.shake_duration = 0.8
                 self.game.shake_intensity = 1
 
             elif self.time_spent_drifting > CAR_DRIFT_BOOST_TIME[1]:
+                self.boost_sound.play()
                 self.speed += CAR_DRIFT_BOOST[1]
                 self.post_drift_time = CAR_DRIFT_POST_TIME[1]
                 self.game.shake_duration = 0.8
                 self.game.shake_intensity = 1
 
             elif self.time_spent_drifting > CAR_DRIFT_BOOST_TIME[0]:
+                self.boost_sound.play()
                 self.speed += CAR_DRIFT_BOOST[0]
                 self.post_drift_time = CAR_DRIFT_POST_TIME[0]
                 self.game.shake_duration = 0.8
                 self.game.shake_intensity = 1
 
     def is_drifting(self):
-        return self.turning == "drift_in" or self.turning == "drift_out"
+        return self.turning in ["drift_in", "drift_out", "drift_neutral"]
 
     def start_left_turn(self):
         self.turning = "left"
+        self.turn_dir = -1
 
     def end_left_turn(self):
-        self.turning = None
+        if self.turning == "left":
+            self.turning = None
+
+    def start_right_turn(self):
+        self.turning = "right"
+        self.turn_dir = 1
+
+    def end_right_turn(self):
+        if self.turning == "right":
+            self.turning = None
 
     def update_sparks(self, dt: float):
         for spark_list in [self.sparks, self.world_sparks]:
@@ -622,7 +648,7 @@ class Car(pg.sprite.Sprite):
 
         suction_force = Vector2(0, 0)
         if self.is_drifting():
-            inward_dir = self.velocity_dir.rotate(-90)
+            inward_dir = self.velocity_dir.rotate(90 * self.turn_dir)
             suction_force = inward_dir * self.speed * 0.2
 
         current_velocity = (self.velocity_dir * self.speed) + suction_force
@@ -721,13 +747,19 @@ class Car(pg.sprite.Sprite):
             self.speed = max(self.speed, 0)
 
         # turning
-        if self.turning == "left":
+        if self.turning == "left" or self.turning == "right":
             self.turn_speed -= CAR_TURN_ACCEL * dt
 
             if self.turn_speed < -CAR_MAX_TURN_SPEED:
                 self.turn_speed += CAR_TURN_DECCEL * dt
 
         elif self.turning == "drift_in":
+            self.turn_speed -= CAR_TURN_ACCEL * dt
+
+            if self.turn_speed < -CAR_MAX_TURN_SPEED:
+                self.turn_speed += CAR_TURN_DECCEL * dt
+
+        elif self.turning == "drift_neutral":
             self.turn_speed -= CAR_TURN_ACCEL * dt
 
             if self.turn_speed < -CAR_MAX_TURN_SPEED:
@@ -750,6 +782,10 @@ class Car(pg.sprite.Sprite):
                 turn_multiplier = 2
                 self.car_max_speed = CAR_MAX_SPEED * 0.65
 
+            case "drift_neutral":
+                turn_multiplier = 1.6
+                self.car_max_speed = CAR_MAX_SPEED * 0.8
+
             case "drift_out":
                 turn_multiplier = 1.2
                 self.car_max_speed = CAR_MAX_SPEED * 0.9
@@ -758,7 +794,7 @@ class Car(pg.sprite.Sprite):
                 turn_multiplier = 1
                 self.car_max_speed = CAR_MAX_SPEED * 1
 
-        actual_turn = self.turn_speed * turn_multiplier
+        actual_turn = self.turn_speed * turn_multiplier * -self.turn_dir
 
         # don't turn if we're not moving
         # because how on earth could we turn if we are not moving
@@ -768,23 +804,47 @@ class Car(pg.sprite.Sprite):
         # movement
 
         # drift stuff
-        if self.is_drifting() and self.speed > CAR_SPEED_DRIFT_THRESHOLD:
-            self.time_spent_drifting += dt * (1 if self.turning == "drift_in" else 0)
+        if self.is_drifting():
+            self.emit_sparks()
+            if self.speed > CAR_SPEED_DRIFT_THRESHOLD:
+                self.time_spent_drifting += dt * (
+                    1 if self.turning == "drift_in" else 0
+                )
 
-            self.time_spent_drifting = min(
-                CAR_DRIFT_BOOST_TIME[2] + 0.4, self.time_spent_drifting
-            )
+                self.time_spent_drifting = min(
+                    CAR_DRIFT_BOOST_TIME[2] + 0.4, self.time_spent_drifting
+                )
 
-            self.time_spent_drifting = max(0, self.time_spent_drifting)
+                self.time_spent_drifting = max(0, self.time_spent_drifting)
 
-            self.add_trail()
-            target_offset = -90
-            lerp_speed = 5.0
+                self.add_trail()
+
+                if self.is_grounded():
+                    if self.drift_sound_channel is None:
+                        self.drift_sound_channel = self.drift_sound.play(-1)
+                else:
+                    if self.drift_sound_channel is not None:
+                        self.drift_sound_channel.stop()
+                        self.drift_sound_channel = None
+
+                target_offset = 90 * self.turn_dir
+                lerp_speed = 5.0
+            else:
+                if self.drift_sound_channel is not None:
+                    self.drift_sound_channel.stop()
+                    self.drift_sound_channel = None
+                target_offset = 0.0
+                lerp_speed = 7.0
         else:
+            if self.drift_sound_channel is not None:
+                self.drift_sound_channel.stop()
+                self.drift_sound_channel = None
             target_offset = 0.0
             lerp_speed = 7.0
 
-        self.visual_offset += (target_offset - self.visual_offset) * max(0, min(1, lerp_speed * dt))
+        self.visual_offset += (target_offset - self.visual_offset) * max(
+            0, min(1, lerp_speed * dt)
+        )
         self.display_angle = self.angle + self.visual_offset
 
         if self.post_drift_time > 0:
@@ -804,9 +864,6 @@ class Car(pg.sprite.Sprite):
         # if we aren't colliding, we should stay on top of the obstacle
         elif not self.colliding:
             self.group.change_layer(self, 3)
-
-        if self.is_drifting():
-            self.emit_sparks()
 
         if self.did_just_land():
             self.land_sound.play()
@@ -846,15 +903,12 @@ class Car(pg.sprite.Sprite):
                 offset = Vector2(
                     random.uniform(-10, 10), random.uniform(-10, 10)
                 ).rotate(self.display_angle)
-                # Shift slightly forward to engine bay area (Vector2(0, -15) is forward)
                 forward_shift = Vector2(0, -15).rotate(self.display_angle)
 
-                # Apply z_pos and forward shift
                 pos = self.position + offset + Vector2(0, -self.z_pos) + forward_shift
                 vel = Vector2(random.uniform(-12, 12), random.uniform(-25, -8)).rotate(
                     self.display_angle
                 )
-                # Slightly smaller size
                 puff = FirePuff(
                     pos, vel, random.uniform(2, 5), colors, random.uniform(0.6, 1.2)
                 )
@@ -865,3 +919,26 @@ class Car(pg.sprite.Sprite):
         self.update_sparks(dt)
         self.update_collision()
         self.update_position(dt)
+
+    def reload_assets(self):
+        self.frames = []
+        self.burnt_frames = []
+
+        settings = Setting()
+        vehicle = settings.get_vehicle().lower()
+        color = settings.get_color().lower()
+
+        for i in range(0, 48):
+            self.frames.append(
+                load_image(f"vehicles/{vehicle}/{color}/{i:03}.png").convert_alpha()
+            )
+
+        for i in range(0, 8):
+            if (ASSETS_DIR / f"vehicles/{vehicle}/burnt/{i}.png").exists():
+                self.burnt_frames.append(
+                    load_image(f"vehicles/{vehicle}/burnt/{i}.png").convert_alpha()
+                )
+            else:
+                self.burnt_frames.append(
+                    load_image(f"vehicles/car/burnt/{i}.png").convert_alpha()
+                )

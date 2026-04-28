@@ -12,7 +12,6 @@ class FloatingLogoUI:
     __x: int
     __y: int = 10
 
-    # Animation
     __bounds: int = 3
     __offset: int = 0
     __rate: int = 1
@@ -24,7 +23,7 @@ class FloatingLogoUI:
         self.__vp = viewport
         self.__logo = load_image("logo/logo_2.png")
         self.__logo = pg.transform.scale_by(self.__logo, 0.8)
-        self.__x = floor(((36 * 16) - self.__logo.width) / 2)
+        self.__x = floor(((20 * 16) - self.__logo.width) / 2)
 
     def hide(self):
         self.__hidden = True

@@ -15,6 +15,8 @@ import time
 
 from helper import *
 
+import grass
+
 from car import Car
 from enemy import Enemy
 from small_zombie import SmallZombie
@@ -62,6 +64,8 @@ class Game:
     bullets_to_shoot: int = 0
 
     space_held_time: float = 0.0
+    left_held_time: float = 0.0
+    right_held_time: float = 0.0
     space_bar_press_tmr: float = 0.0
     space_bar_press_tmr_target: float = 1.5
 
@@ -92,32 +96,53 @@ class Game:
         self.upgrade_left = UICard("selected", "left")
         self.upgrade_right = UICard("unselected", "right")
 
-        tmx_data = load_pygame(str(self.map_path))
-
         self.walls = []
         self.tall_walls = []
 
-        for objgroup in tmx_data.objectgroups:
-            if objgroup.name == "Short Hitboxes":
-                for obj in objgroup:
-                    self.walls.append(pg.Rect(obj.x, obj.y, obj.width, obj.height))
+        self.map_width = 1000000  # Effectively infinite
+        self.frame_count = 0
+        self.map_height = 1000000
 
-            if objgroup.name == "Tall Hitboxes":
-                for obj in objgroup:
-                    self.tall_walls.append(pg.Rect(obj.x, obj.y, obj.width, obj.height))
-
-        self.map_width = tmx_data.width * tmx_data.tilewidth
-        self.map_height = tmx_data.height * tmx_data.tileheight
-
+        # We keep map_layer for camera handling but point it to dummy data
+        # or just use its size. Pyscroll needs it.
+        tmx_data = load_pygame(str(self.map_path))
         self.map_layer = pyscroll.BufferedRenderer(
             data=pyscroll.data.TiledMapData(tmx_data),
             size=self.screen.get_size(),
-            clamp_camera=True,
+            clamp_camera=False,  # Allow moving anywhere
         )
 
         self.map_layer.zoom = 1
         self.group = PyscrollGroup(map_layer=self.map_layer, default_layer=1)
         self.fps = 0
+
+        # Initialize grass
+        self.grass_manager = grass.GrassManager(
+            get_dir("grass"),
+            tile_size=16,
+            stiffness=20,  # Increased from 5 for better performance (returns to cache faster)
+            max_unique=15,
+            place_range=[0, 1],
+        )
+        self.grass_manager.enable_ground_shadows(
+            shadow_radius=4, shadow_color=(0, 0, 1), shadow_strength=40
+        )
+        self.generated_grass_tiles = set()
+
+        # Load the dirt floor pattern from dirt.tmx
+        dirt_tmx = load_pygame(str(ASSETS_DIR / "tiled" / "dirt.tmx"))
+        self.floor_tile = pg.Surface(
+            (dirt_tmx.width * dirt_tmx.tilewidth, dirt_tmx.height * dirt_tmx.tileheight)
+        )
+        for layer in dirt_tmx.visible_layers:
+            if hasattr(layer, "data"):
+                for x, y, gid in layer:
+                    tile = dirt_tmx.get_tile_image_by_gid(gid)
+                    if tile:
+                        self.floor_tile.blit(
+                            tile, (x * dirt_tmx.tilewidth, y * dirt_tmx.tileheight)
+                        )
+        self.floor_tile = self.floor_tile.convert()
 
         self.enemies = pg.sprite.Group()
         self.bullets = pg.sprite.Group()
@@ -126,7 +151,8 @@ class Game:
         self.car = Car(self.group, self.screen, self.bullets, self)
         self.car.position = Vector2(101.9 * 16, 69.1 * 16)
         self.group.add(self.car)
-        self.group.center(self.car.position + Vector2(-140, -40))
+
+        self.group.center(self.car.position + Vector2(-160, -110))
 
         self.gas_arrow = GasArrow(self.car, self.group, self.gas_cans)
 
@@ -138,10 +164,11 @@ class Game:
         pg.mixer.music.set_volume(self.volume)
         pg.mixer.music.play()
 
-        self.menu = Menu(screen, self.state_set_running)
+        self.menu = Menu(screen, self.car, self.state_set_running)
         self.game_ui = GameUI(screen)
         self.state = "MENU"
         self.started = False
+        self.last_dt = 0.016
 
         # # Create vignette
         # self.vignette = pg.Surface((WIDTH, HEIGHT), pg.SRCALPHA)
@@ -169,7 +196,9 @@ class Game:
             target_pos = self.car.position + lead_offset
 
             if Vector2(self.group.view.center).distance_to(target_pos) > 5:
-                target_center = Vector2(self.group.view.center).lerp(target_pos, max(0.0, min(1.0, 0.1)))
+                target_center = Vector2(self.group.view.center).lerp(
+                    target_pos, max(0.0, min(1.0, 0.1))
+                )
             else:
                 target_center = target_pos
 
@@ -184,7 +213,52 @@ class Game:
 
         # redrawing here is a gross hack but like don't question it
         self.car.draw()
-        self.group.draw(self.screen)
+
+        view_rect = self.group.view
+        view_offset_x = view_rect.x
+        view_offset_y = view_rect.y
+
+        tile_w = self.floor_tile.get_width()
+        tile_h = self.floor_tile.get_height()
+
+        start_x = int((view_offset_x // tile_w) * tile_w)
+        start_y = int((view_offset_y // tile_h) * tile_h)
+
+        for y in range(start_y, start_y + HEIGHT + tile_h, tile_h):
+            for x in range(start_x, start_x + WIDTH + tile_w, tile_w):
+                self.screen.blit(
+                    self.floor_tile, (x - view_offset_x, y - view_offset_y)
+                )
+
+        visible_sprites = sorted(
+            [s for s in self.group if s.rect.colliderect(view_rect)],
+            key=lambda s: getattr(s, "_layer", 0),
+        )
+
+        i = 0
+        while i < len(visible_sprites) and getattr(visible_sprites[i], "_layer", 0) < 0:
+            sprite = visible_sprites[i]
+            self.screen.blit(
+                sprite.image,
+                (sprite.rect.x - view_offset_x, sprite.rect.y - view_offset_y),
+            )
+            i += 1
+
+        t = pg.time.get_ticks() / 1000.0
+        self.grass_manager.update_render(
+            self.screen,
+            self.last_dt,
+            offset=(view_offset_x, view_offset_y),
+            rot_function=lambda x, y: int(math.sin(t + x / 100) * 15),
+        )
+
+        while i < len(visible_sprites):
+            sprite = visible_sprites[i]
+            self.screen.blit(
+                sprite.image,
+                (sprite.rect.x - view_offset_x, sprite.rect.y - view_offset_y),
+            )
+            i += 1
 
         # if self.state == "RUNNING":
         # self.screen.blit(self.vignette, (0, 0))
@@ -206,7 +280,7 @@ class Game:
 
         if self.state == "RUNNING" and not self.started:
             prompts = [
-                "PRESS SPACE TO START",
+                "PRESS LEFT OR RIGHT TO START",
                 "",
                 "",
                 "",
@@ -223,10 +297,10 @@ class Game:
                 "",
                 "",
                 "",
-                "PRESS SPACE TO HOP",
-                "HOLD SPACE BEFORE LANDING TO INITIATE A DRIFT",
-                "RELEASE SPACE TO DRIFT OUT",
-                "TAP SPACE TO BOOST OUT OF DRIFT",
+                "TAP LEFT OR RIGHT TO HOP",
+                "HOLD BEFORE LANDING TO INITIATE A DRIFT",
+                "RELEASE TO DRIFT OUT",
+                "TAP TO BOOST OUT OF DRIFT",
             ]
             blink = (pg.time.get_ticks() // 600) % 2 == 0
             for i, line in enumerate(prompts):
@@ -242,7 +316,11 @@ class Game:
                 self.screen.blit(shadow, (text_rect.x + 2, text_rect.y + 2))
                 self.screen.blit(text, text_rect)
 
-        if self.state == "UPGRADE" or self.state == "GAMEOVER" or self.state == "PAUSED":
+        if (
+            self.state == "UPGRADE"
+            or self.state == "GAMEOVER"
+            or self.state == "PAUSED"
+        ):
             overlay = pg.Surface(self.screen.get_size(), pg.SRCALPHA)
             overlay.fill((0, 0, 0, 150))
             self.screen.blit(overlay, (0, 0))
@@ -278,7 +356,9 @@ class Game:
             self.screen.blit(shadow, (text_rect.x + 2, text_rect.y + 2))
             self.screen.blit(text, text_rect)
 
-            sub_text = self.font.render(f"SCORE: {self.car.skulls}", True, (255, 255, 255))
+            sub_text = self.font.render(
+                f"SCORE: {self.car.skulls}", True, (255, 255, 255)
+            )
             sub_shadow = self.font.render(f"SCORE: {self.car.skulls}", True, (0, 0, 0))
             sub_rect = sub_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
             self.screen.blit(sub_shadow, (sub_rect.x + 2, sub_rect.y + 2))
@@ -328,7 +408,7 @@ class Game:
                         pg.mixer.music.set_volume(self.volume)
 
                 if self.state == "RUNNING" and not self.started:
-                    if event.key == pg.K_SPACE:
+                    if event.key in [pg.K_SPACE, pg.K_LEFT, pg.K_RIGHT]:
                         self.started = True
                         self.game_start_sound.play()
                         self.game_ui.show()
@@ -363,15 +443,21 @@ class Game:
         current_time = pg.time.get_ticks()
 
         if self.state == "UPGRADE":
-            if just_pressed[pg.K_SPACE]:
+            if (
+                just_pressed[pg.K_SPACE]
+                or just_pressed[pg.K_LEFT]
+                or just_pressed[pg.K_RIGHT]
+            ):
                 self.upgrade_charge_sound.set_volume(1.0)
                 self.upgrade_charge_channel = self.upgrade_charge_sound.play()
 
-            if pressed[pg.K_SPACE]:
+            if pressed[pg.K_SPACE] or pressed[pg.K_LEFT] or pressed[pg.K_RIGHT]:
                 self.space_bar_press_tmr += dt
                 progress = max(
                     0.0,
-                    min(1.0, self.space_bar_press_tmr / self.space_bar_press_tmr_target),
+                    min(
+                        1.0, self.space_bar_press_tmr / self.space_bar_press_tmr_target
+                    ),
                 )
 
                 if self.upgrade_left.state == "selected":
@@ -399,7 +485,11 @@ class Game:
                 pg.mixer.music.set_volume(self.volume)
                 return
 
-            if just_released[pg.K_SPACE]:
+            if (
+                just_released[pg.K_SPACE]
+                or just_released[pg.K_LEFT]
+                or just_released[pg.K_RIGHT]
+            ):
                 if getattr(self, "upgrade_charge_channel", None):
                     self.upgrade_charge_channel.stop()
                     self.upgrade_charge_channel = None
@@ -426,7 +516,7 @@ class Game:
 
         # IF STATE IS MENU (MAIN MENU)
         # DO NO ALLOW USER INPUT
-        if self.state != "RUNNING":
+        if self.state == "MENU":
             self.car.accelerating = True
             self.car.turning = "drift_in"
             return
@@ -439,39 +529,87 @@ class Game:
         if just_released[pg.K_0]:
             self.car.take_damage()
 
-        if just_released[pg.K_SPACE]:
-            if self.car.turning == "drift_in":
-                # click
-                if self.space_held_time < HOLD_TIME:
-                    self.car.end_drift()
-                # hold
-                else:
-                    self.car.start_drift_out()
+        # Handle both directions
+        for key, direction in [(pg.K_LEFT, -1), (pg.K_RIGHT, 1)]:
+            opposite_key = pg.K_RIGHT if key == pg.K_LEFT else pg.K_LEFT
+            key_held_time = (
+                self.left_held_time if key == pg.K_LEFT else self.right_held_time
+            )
 
-            elif self.car.turning is None:
-                if self.space_held_time < HOLD_TIME:
+            if just_released[key]:
+                if self.car.is_drifting():
+                    if self.car.turn_dir == direction:
+                        # check if we are still holding the other key to drift out
+                        if pressed[opposite_key]:
+                            self.car.start_drift_out()
+                        else:
+                            # click to hop or release drift
+                            if key_held_time < HOLD_TIME:
+                                self.car.end_drift()
+                            else:
+                                self.car.start_drift_neutral()
+                    else:
+                        # Released opposite key while drifting
+                        if key_held_time < HOLD_TIME:
+                            self.car.end_drift()
+                        else:
+                            # If we held the opposite key, we were in drift_out.
+                            # On release, if original key still held, go back to drift_in
+                            if pressed[opposite_key]:
+                                self.car.start_drift_in()
+                            else:
+                                self.car.start_drift_neutral()
+
+                elif self.car.turning is None:
+                    if key_held_time < HOLD_TIME:
+                        if self.car.z_pos == 0:
+                            self.car.jump()
+
+                if (key == pg.K_LEFT and self.car.turning == "left") or (
+                    key == pg.K_RIGHT and self.car.turning == "right"
+                ):
+                    self.car.turning = None
+
+            if just_pressed[key]:
+                if self.car.is_drifting():
+                    if self.car.turn_dir == direction:
+                        self.car.start_drift_in()
+                    else:
+                        self.car.start_drift_out()
+
+            # has key been pressed
+            if pressed[key]:
+                if self.car.turning is None:
                     if self.car.z_pos == 0:
-                        self.car.jump()
+                        if key_held_time > HOLD_TIME:
+                            if key == pg.K_LEFT:
+                                self.car.start_left_turn()
+                            else:
+                                self.car.start_right_turn()
+                    else:
+                        self.car.start_drift(direction)
 
-        if just_pressed[pg.K_SPACE]:
-            if self.car.turning == "drift_out":
-                self.car.start_drift_in()
+            # Neutral handling: if we are drifting and neither key is pressed for that drift's direction
+            if self.car.is_drifting():
+                drift_key = pg.K_LEFT if self.car.turn_dir == -1 else pg.K_RIGHT
+                drift_opposite = pg.K_RIGHT if self.car.turn_dir == -1 else pg.K_LEFT
 
-        # has space been pressed
-        if pressed[pg.K_SPACE]:
-            if self.car.turning is None:
-                if self.car.z_pos == 0:
-                    if self.space_held_time > HOLD_TIME:
-                        self.car.start_left_turn()
-                else:
-                    self.car.start_drift()
-
-        if just_released[pg.K_SPACE] and self.car.turning == "left":
-            self.car.end_left_turn()
+                if not pressed[drift_key] and not pressed[drift_opposite]:
+                    self.car.start_drift_neutral()
 
         self.car.accelerating = True
 
-        if pressed[pg.K_SPACE]:
+        if pressed[pg.K_LEFT]:
+            self.left_held_time += dt
+        else:
+            self.left_held_time = 0
+
+        if pressed[pg.K_RIGHT]:
+            self.right_held_time += dt
+        else:
+            self.right_held_time = 0
+
+        if pressed[pg.K_LEFT] or pressed[pg.K_RIGHT]:
             self.space_held_time += dt
         else:
             self.space_held_time = 0
@@ -501,7 +639,10 @@ class Game:
         self.car = Car(self.group, self.screen, self.bullets, self)
         self.car.position = Vector2(101.9 * 16, 69.1 * 16)
         self.group.add(self.car)
-        self.group.center(self.car.position + Vector2(-140, -40))
+
+        self.group.center(self.car.position + Vector2(-160, -110))
+
+        self.menu.set_car(self.car)
 
         self.gas_arrow = GasArrow(self.car, self.group, self.gas_cans)
 
@@ -616,12 +757,68 @@ class Game:
         self.group.add(ft)
 
     def update(self, dt: float) -> None:
+        self.last_dt = dt
         if self.freeze_time > 0:
             self.freeze_time -= dt
             return
 
+        # Pre-calculate viewport for optimization
+        view_rect = pg.Rect(self.group.view)
+        # Expanded view for updates (zombies just outside screen should still move)
+        update_rect = view_rect.inflate(WIDTH, HEIGHT)
+
+        if self.state == "MENU":
+            pass
+
         if self.state == "RUNNING" or self.state == "MENU" or self.state == "GAMEOVER":
+            # Update spatial grid for enemies once per frame
+            Enemy.update_grid(self.enemies)
+
             self.group.update(dt)
+
+            # Infinite Grass Generation around the car (optimized to run every 10 frames)
+            if self.frame_count % 10 == 0:
+                car_tile_x = int(self.car.position.x // 16)
+                car_tile_y = int(self.car.position.y // 16)
+
+                # radius around player to ensure grass is generated ahead
+                # reduced from 35 to 25 to reduce frame spikes
+                radius = 25
+                for ty in range(car_tile_y - radius, car_tile_y + radius):
+                    for tx in range(car_tile_x - radius, car_tile_x + radius):
+                        if (tx, ty) not in self.generated_grass_tiles:
+                            density = random.randint(8, 16)
+                            self.grass_manager.place_tile(
+                                (tx, ty), density, [0, 1, 2, 3, 4, 5]
+                            )
+                            self.generated_grass_tiles.add((tx, ty))
+
+            self.frame_count += 1
+
+            if self.car.z_pos == 0:
+                mask_offset = (self.car.rect.x, self.car.rect.y)
+                self.grass_manager.apply_mask_force(self.car.mask, mask_offset)
+
+                dist = self.car.position.distance_to(self.car.old_position)
+                # Increased threshold and step for intermediate force application
+                if dist > 20:
+                    num_steps = int(dist / 20)
+                    for i in range(1, num_steps):
+                        lerp_pos = self.car.old_position.lerp(
+                            self.car.position, i / num_steps
+                        )
+                        # Center of mask
+                        mask_tl = (lerp_pos.x - 150, lerp_pos.y - 150)
+                        self.grass_manager.apply_mask_force(self.car.mask, mask_tl)
+
+            cell_x = int(self.car.position.x // Enemy.grid_cell_size)
+            cell_y = int(self.car.position.y // Enemy.grid_cell_size)
+            for dx in range(-2, 3):
+                for dy in range(-2, 3):
+                    cell = (cell_x + dx, cell_y + dy)
+                    if cell in Enemy.grid:
+                        for enemy in Enemy.grid[cell]:
+                            self.grass_manager.apply_force(enemy.pos, 10, 20)
 
         if self.shake_duration > 0:
             self.shake_duration -= dt
@@ -642,7 +839,7 @@ class Game:
             if self.started:
                 self.game_time += dt
 
-            # Death conditions
+            # death conditions
             is_dead = False
             if self.car.health <= 0:
                 is_dead = True
@@ -670,112 +867,59 @@ class Game:
                     self.spawn_wave()
                     self.time_to_next_wave = WAVE_INTERVAL_SECS
 
-            # if self.car
-
-            car_collision_detected = None
-            car_collision_point = None
-
-            for wall_list, wall_list_type in [
-                (self.walls, "short"),
-                (self.tall_walls, "tall"),
-            ]:
-                for wall in wall_list:
-                    for bullet in self.bullets.sprites():
-                        if bullet.rect.colliderect(wall):
-                            bullet.kill()
-
-                    for enemy in self.enemies:
-                        if enemy.rect.colliderect(wall):
-                            enemy_dr = enemy.rect.right - wall.left
-                            enemy_dl = wall.right - enemy.rect.left
-                            enemy_db = enemy.rect.bottom - wall.top
-                            enemy_dt = wall.bottom - enemy.rect.top
-
-                            min_overlap = min(enemy_dr, enemy_dl, enemy_db, enemy_dt)
-
-                            if min_overlap == enemy_dr:
-                                enemy.handle_collision("right", dt)
-                            elif min_overlap == enemy_dl:
-                                enemy.handle_collision("left", dt)
-                            elif min_overlap == enemy_db:
-                                enemy.handle_collision("bottom", dt)
-                            elif min_overlap == enemy_dt:
-                                enemy.handle_collision("top", dt)
-
-                    if self.car.rect.colliderect(wall):
-                        wall_mask = pg.mask.Mask(wall.size)
-                        wall_mask.fill()
-
-                        offset = (wall.x - self.car.rect.x, wall.y - self.car.rect.y)
-                        overlap = self.car.mask.overlap(wall_mask, offset)
-                        if overlap:
-                            car_collision_detected = wall_list_type
-                            car_collision_point = overlap
-                            break
-                if car_collision_detected:
-                    break
-
-            self.car.colliding = car_collision_detected
-            if car_collision_detected:
-                self.car.handle_collision(
-                    dt, car_collision_detected, car_collision_point
-                )
-
-            # if (
-            #     self.car.did_just_land()
-            #     or self.car.post_drift_time != 0
-            #     or self.car.invuln_time != 0
-            # ):
-            # self.shake_duration = 0
-            # self.shake_intensity = 1
-
             landing_mask = self.car.get_landing_mask()
             landing_aoe_mask = self.car.get_landing_mask_aoe()
 
             landing_shift = 150  # (600 - 300) / 2
             landing_aoe_shift = 600  # (1500 - 300) / 2
 
-            for enemy in self.enemies:
-                landing_offset = (
-                    enemy.rect.x - (self.car.rect.x - landing_shift),
-                    enemy.rect.y - (self.car.rect.y - landing_shift),
-                )
+            check_cells = 4  # landing aoe
+            for dx in range(-check_cells, check_cells + 1):
+                for dy in range(-check_cells, check_cells + 1):
+                    cell = (cell_x + dx, cell_y + dy)
+                    if cell in Enemy.grid:
+                        for enemy in Enemy.grid[cell]:
+                            landing_offset = (
+                                enemy.rect.x - (self.car.rect.x - landing_shift),
+                                enemy.rect.y - (self.car.rect.y - landing_shift),
+                            )
 
-                landing_aoe_offset = (
-                    enemy.rect.x - (self.car.rect.x - landing_aoe_shift),
-                    enemy.rect.y - (self.car.rect.y - landing_aoe_shift),
-                )
+                            landing_aoe_offset = (
+                                enemy.rect.x - (self.car.rect.x - landing_aoe_shift),
+                                enemy.rect.y - (self.car.rect.y - landing_aoe_shift),
+                            )
 
-                if landing_mask.overlap(enemy.mask, landing_offset):
-                    if self.car.is_drifting():
-                        enemy.push_back(self.car.rect.center)
+                            if landing_mask.overlap(enemy.mask, landing_offset):
+                                if self.car.is_drifting():
+                                    enemy.push_back(self.car.rect.center)
 
-                    if (
-                        self.car.did_just_land()
-                        or self.car.post_drift_time != 0
-                        or self.car.invuln_time != 0
-                    ):
-                        enemy.take_damage(1)
+                                if (
+                                    self.car.did_just_land()
+                                    or self.car.post_drift_time != 0
+                                    or self.car.invuln_time != 0
+                                ):
+                                    enemy.take_damage(1)
 
-                if landing_aoe_mask.overlap(enemy.mask, landing_aoe_offset):
-                    if (
-                        self.car.did_just_land()
-                        or self.car.post_drift_time != 0
-                        or self.car.invuln_time != 0
-                    ):
-                        enemy.push_back(self.car.rect.center)
+                            if landing_aoe_mask.overlap(enemy.mask, landing_aoe_offset):
+                                if (
+                                    self.car.did_just_land()
+                                    or self.car.post_drift_time != 0
+                                    or self.car.invuln_time != 0
+                                ):
+                                    enemy.push_back(self.car.rect.center)
 
-                # Damage collision
-                if self.car.z_pos == 0 and self.car.invuln_time <= 0:
-                    offset = (
-                        enemy.rect.x - self.car.rect.x,
-                        enemy.rect.y - self.car.rect.y,
-                    )
-                    if self.car.mask.overlap(enemy.mask, offset):
-                        if not (
-                            self.car.did_just_land() or self.car.post_drift_time != 0
-                        ):
-                            self.car.take_damage()
+                            # damage collision
+                            if self.car.z_pos == 0 and self.car.invuln_time <= 0:
+                                offset = (
+                                    enemy.rect.x - self.car.rect.x,
+                                    enemy.rect.y - self.car.rect.y,
+                                )
+                                if self.car.mask.overlap(enemy.mask, offset):
+                                    if not (
+                                        self.car.did_just_land()
+                                        or self.car.post_drift_time != 0
+                                    ):
+                                        self.car.take_damage()
 
             # shooting bullet
             if (
@@ -788,47 +932,50 @@ class Game:
                 forward = Vector2(0, -1).rotate(self.car.display_angle)
                 enemies_in_fov = []
 
-                for enemy in self.enemies:
-                    to_enemy = Vector2(enemy.rect.center) - Vector2(
-                        self.car.rect.center
-                    )
-                    if to_enemy.length() > 0:
-                        angle_to_enemy = forward.angle_to(to_enemy)
-                        if abs(angle_to_enemy) < 45:  # 90 degree FOV (45 each side)
-                            enemies_in_fov.append(enemy)
+                for dx in range(-4, 5):
+                    for dy in range(-4, 5):
+                        cell = (cell_x + dx, cell_y + dy)
+                        if cell in Enemy.grid:
+                            for enemy in Enemy.grid[cell]:
+                                to_enemy = Vector2(enemy.rect.center) - Vector2(
+                                    self.car.rect.center
+                                )
+                                dist_sq = to_enemy.length_squared()
+                                if 0 < dist_sq < 62500:  # 250^2
+                                    angle_to_enemy = forward.angle_to(to_enemy)
+                                    if abs(angle_to_enemy) < 45:
+                                        enemies_in_fov.append((enemy, dist_sq))
 
                 if enemies_in_fov:
-                    closest = min(
-                        enemies_in_fov,
-                        key=lambda e: Vector2(self.car.rect.center).distance_to(
-                            e.rect.center
-                        ),
-                    )
+                    closest_enemy, _ = min(enemies_in_fov, key=lambda x: x[1])
 
-                    dist_to_closest = Vector2(self.car.rect.center).distance_to(
-                        closest.rect.center
-                    )
+                    self.car.add_bullet(Vector2(closest_enemy.rect.center))
+                    if self.bullets_to_shoot != 0:
+                        self.bullets_to_shoot -= 1
+                        self.car.time_since_last_shot = self.car.shot_delay - 0.1
 
-                    if dist_to_closest < 250:
-                        self.car.add_bullet(Vector2(closest.rect.center))
-                        if self.bullets_to_shoot != 0:
-                            self.bullets_to_shoot -= 1
-                            self.car.time_since_last_shot = self.car.shot_delay - 0.1
-
-                        if self.bullets_to_shoot == 0:
-                            self.car.time_since_last_shot = 0
-                else:
-                    # If no enemies in FOV, we don't shoot and we don't start/continue a burst
-                    # but we keep the timer running so it can shoot as soon as an enemy enters FOV
-                    # if the delay has already passed.
-                    pass
+                    if self.bullets_to_shoot == 0:
+                        self.car.time_since_last_shot = 0
 
             # bullet/enemy collision
-            collisions = pg.sprite.groupcollide(self.bullets, self.enemies, True, False)
-            if collisions:
-                for bullet, hit_enemies in collisions.items():
-                    for enemy in hit_enemies:
-                        enemy.take_damage(1)
+            for bullet in self.bullets:
+                b_cell_x = int(bullet.rect.centerx // Enemy.grid_cell_size)
+                b_cell_y = int(bullet.rect.centery // Enemy.grid_cell_size)
+                hit = False
+                for dx in range(-1, 2):
+                    for dy in range(-1, 2):
+                        cell = (b_cell_x + dx, b_cell_y + dy)
+                        if cell in Enemy.grid:
+                            for enemy in Enemy.grid[cell]:
+                                if bullet.rect.colliderect(enemy.rect):
+                                    enemy.take_damage(1)
+                                    bullet.kill()
+                                    hit = True
+                                    break
+                        if hit:
+                            break
+                    if hit:
+                        break
 
         # self.menu.update(dt)
         # maybe remove?

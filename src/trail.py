@@ -16,7 +16,7 @@ class Trail(pg.sprite.Sprite):
         # TODO: maybe tweak these? this was stolen LMAO
         self.lifetime = 1.5
         self.alpha = 200
-        self._layer = 1
+        self._layer = -10
 
     def update(self, dt: float):
         self.lifetime -= dt

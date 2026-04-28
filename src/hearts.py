@@ -77,3 +77,5 @@ class HeartsUI:
 
     def show(self):
         self.__hidden = False
+        for i in range(len(self.__scales)):
+            self.__scales[i] = 1.5
